@@ -3,4 +3,4 @@ WORKDIR /rems-intermediary
 COPY --chown=node:node . .
 RUN npm install
 EXPOSE 3003
-CMD npm run start
+CMD npm start
