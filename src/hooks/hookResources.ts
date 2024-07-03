@@ -60,11 +60,15 @@ export async function handleHook(
 
   //TODO: lookup hook url based on medication from the database
   //  look at rems-admin hookResources code to determine how to get the medication code
-  //TODO: remove the auth token
   //TODO: hydrate the prefetch
+
+  // remove the auth token
+  let hook = req.body;
+  delete hook.fhirAuthorization;
+
   const options = {
     method: 'POST',
-    data: req.body
+    data: hook
   };
   const response = axios(url, options);
   response.then(e => {
