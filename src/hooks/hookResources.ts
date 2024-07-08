@@ -10,6 +10,7 @@ import {
 } from 'fhir/r4';
 import Card, { Link, Suggestion, Action } from '../cards/Card';
 import {
+  Hook,
   HookPrefetch,
   TypedRequestBody,
   TypedResponseBody
@@ -47,6 +48,21 @@ export function buildErrorCard(reason: string) {
   return cards;
 }
 
+export function getFhirResource(token: string, req: TypedRequestBody) {
+  const ehrUrl = `${req.body.fhirServer}/${token}`;
+  const access_token = req.body.fhirAuthorization?.access_token;
+  const options = {
+    method: 'GET',
+    headers: {
+      Authorization: `Bearer ${access_token}`
+    }
+  };
+  const response = axios(ehrUrl, options);
+  return response.then(e => {
+    return e.data;
+  });
+}
+
 
 // handles all hooks, any supported hook should pass through this function
 export async function handleHook(
@@ -60,39 +76,29 @@ export async function handleHook(
 
   //TODO: lookup hook url based on medication from the database
   //  look at rems-admin hookResources code to determine how to get the medication code
-  //TODO: hydrate the prefetch
 
-  // remove the auth token
-  let hook = req.body;
-  delete hook.fhirAuthorization;
-
-  const options = {
-    method: 'POST',
-    data: hook
-  };
-  const response = axios(url, options);
-  response.then(e => {
-    res.json(e.data);
-  });
-
-  /* prefetch hydration code below...
-  try {
-    const fhirUrl = req.body.fhirServer;
-    const fhirAuth = req.body.fhirAuthorization;
-    if (fhirUrl && fhirAuth && fhirAuth.access_token) {
-      hydrate(getFhirResource, hookPrefetch, req.body).then(hydratedPrefetch => {
-        handleCard(req, res, hydratedPrefetch, contextRequest, callback);
-      });
-    } else {
-      if (req.body.prefetch) {
-        handleCard(req, res, req.body.prefetch, contextRequest, callback);
-      } else {
-        handleCard(req, res, {}, contextRequest, callback);
-      }
-    }
-  } catch (error) {
-    console.log(error);
-    res.json(buildErrorCard('Unknown Error'));
+  const forwardData = (hook: Hook) => {
+    // remove the auth token before any forwarding occurs
+    delete hook.fhirAuthorization;
+    const options = {
+      method: 'POST',
+      data: hook
+    };
+    const response = axios(url, options);
+    response.then(e => {
+      res.json(e.data);
+    });
   }
-  */
+
+  let hook: Hook = req.body;
+  if(hook.fhirAuthorization && hook.fhirServer && hook.fhirAuthorization.access_token) {
+    hydrate(getFhirResource, hookPrefetch, hook).then((hydratedPrefetch) => {
+      if(hydratedPrefetch) {
+        hook.prefetch = hydratedPrefetch;
+      }
+      forwardData(hook);
+    })
+  } else {
+    forwardData(hook);
+  }
 }
