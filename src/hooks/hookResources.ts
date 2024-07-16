@@ -21,6 +21,7 @@ import axios from 'axios';
 import { ServicePrefetch } from '../rems-cds-hooks/resources/CdsService';
 import { hydrate } from '../rems-cds-hooks/prefetch/PrefetchHydrator';
 import { responseToJSON } from 'fhirclient/lib/lib';
+import { getServiceUrl } from './hookProxy';
 
 type HandleCallback = (
   res: TypedResponseBody,
@@ -48,6 +49,28 @@ export function buildErrorCard(reason: string) {
   return cards;
 }
 
+export function getDrugCodeFromMedicationRequest(medicationRequest: MedicationRequest) {
+  if (medicationRequest) {
+    if (medicationRequest?.medicationCodeableConcept) {
+      console.log('Get Medication code from CodeableConcept');
+      return medicationRequest?.medicationCodeableConcept?.coding?.[0];
+    } else if (medicationRequest?.medicationReference) {
+      const reference = medicationRequest?.medicationReference;
+      let coding = null;
+      medicationRequest?.contained?.every(e => {
+        if (e.resourceType + '/' + e.id === reference.reference) {
+          if (e.resourceType === 'Medication') {
+            console.log('Get Medication code from contained resource');
+            coding = e.code?.coding?.[0];
+          }
+        }
+      });
+      return coding;
+    }
+  }
+  return null;
+}
+
 export function getFhirResource(token: string, req: TypedRequestBody) {
   const ehrUrl = `${req.body.fhirServer}/${token}`;
   const access_token = req.body.fhirAuthorization?.access_token;
@@ -63,7 +86,20 @@ export function getFhirResource(token: string, req: TypedRequestBody) {
   });
 }
 
-
+const createErrorCard = (summary: string) => {
+  return {
+    cards: [
+      {
+        summary: summary, 
+        indicator: 'warning',
+        source: {
+          label: 'REMS Intermediary',
+          url: 'http://localhost:3003'
+        }
+      }
+    ]
+  }
+}
 // handles all hooks, any supported hook should pass through this function
 export async function handleHook(
   req: TypedRequestBody,
@@ -71,34 +107,48 @@ export async function handleHook(
   hookPrefetch: ServicePrefetch,
   contextRequest: FhirResource | undefined
 ) {
-  const url = config?.general?.remsAdminHookPath + req?.body?.hook;
-  console.log('rems-admin hook url: ' + url);
+  if(contextRequest && contextRequest.resourceType === 'MedicationRequest'){
+    const drugCode = getDrugCodeFromMedicationRequest(contextRequest);
 
-  //TODO: lookup hook url based on medication from the database
-  //  look at rems-admin hookResources code to determine how to get the medication code
-
-  const forwardData = (hook: Hook) => {
-    // remove the auth token before any forwarding occurs
-    delete hook.fhirAuthorization;
-    const options = {
-      method: 'POST',
-      data: hook
-    };
-    const response = axios(url, options);
-    response.then(e => {
-      res.json(e.data);
-    });
-  }
-
-  let hook: Hook = req.body;
-  if(hook.fhirAuthorization && hook.fhirServer && hook.fhirAuthorization.access_token) {
-    hydrate(getFhirResource, hookPrefetch, hook).then((hydratedPrefetch) => {
-      if(hydratedPrefetch) {
-        hook.prefetch = hydratedPrefetch;
+    const forwardData = (hook: Hook, url: string) => {
+      // remove the auth token before any forwarding occurs
+      delete hook.fhirAuthorization;
+      const options = {
+        method: 'POST',
+        data: hook
+      };
+      const response = axios(url, options);
+      response.then(e => {
+        res.json(e.data);
+      });
+    }
+    if(drugCode) {
+      let hook: Hook = req.body;
+      const serviceUrl = getServiceUrl(drugCode, hook.fhirServer?.toString());
+      if(serviceUrl) {
+        const url = serviceUrl + hook.hook;
+        console.log('rems-admin hook url: ' + url);
+        if(hook.fhirAuthorization && hook.fhirServer && hook.fhirAuthorization.access_token) {
+          hydrate(getFhirResource, hookPrefetch, hook).then((hydratedPrefetch) => {
+            if(hydratedPrefetch) {
+              hook.prefetch = hydratedPrefetch;
+            }
+            forwardData(hook, url);
+          })
+        } else {
+          forwardData(hook, url);
+        }
+      } else {
+        // unsupported drug code, TODO - what to do when we don't have a service url
+        console.log("niope");
+        res.json(createErrorCard('Unsupported Drug Code'));
       }
-      forwardData(hook);
-    })
+    } else {
+      // drug code could not be extracted
+      res.json(createErrorCard('Could not extract drug code from request'));
+    }
   } else {
-    forwardData(hook);
+    // context request is not a medicationRequest
+    res.json(createErrorCard('No Medication Request found in hook'));
   }
 }
