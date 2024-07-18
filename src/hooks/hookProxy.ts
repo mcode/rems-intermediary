@@ -7,7 +7,7 @@ enum EHRWhitelist {
 }
 
 const REMSAdminWhitelist = {
-    mitreRemsAdmin: config?.general?.remsAdminHookPath,
+    standardRemsAdmin: config?.general?.remsAdminHookPath,
     example: 'http://localhost:example'
 }
 
@@ -31,40 +31,46 @@ type Phonebook = {
 const phonebook: Phonebook = {
     [SupportedCodeSystems.rxnorm]: {
         '6064': [ // iPLEDGE
-        {
-            to: REMSAdminWhitelist.mitreRemsAdmin,
-            from:[EHRWhitelist.any]
-        }
-    ],
+            {
+                to: REMSAdminWhitelist.standardRemsAdmin,
+                from:[EHRWhitelist.any]
+            }
+        ],
         '1237051': [ // TIRF
             {
-                to: REMSAdminWhitelist.mitreRemsAdmin,
+                to: REMSAdminWhitelist.standardRemsAdmin,
                 from:[EHRWhitelist.testEhr]
             }
         ],
         '2183126': [ // Turalio
-        {
-            to: REMSAdminWhitelist.mitreRemsAdmin,
-            from:[EHRWhitelist.any]
-        },
-    ]
+            {
+                to: REMSAdminWhitelist.standardRemsAdmin,
+                from:[EHRWhitelist.any]
+            }
+        ],
+        '1666386': [ // Addyi
+            {
+                to: REMSAdminWhitelist.standardRemsAdmin,
+                from:[EHRWhitelist.any]
+            },
+        ]
     },
     [SupportedCodeSystems.ndc]: {
         '0245-0571-01': [ // iPLEDGE
             {
-                to: REMSAdminWhitelist.mitreRemsAdmin,
+                to: REMSAdminWhitelist.standardRemsAdmin,
                 from:[EHRWhitelist.any]
             }
         ],
         '63459-502-30': [ // TIRF
             {
-                to: REMSAdminWhitelist.mitreRemsAdmin,
+                to: REMSAdminWhitelist.standardRemsAdmin,
                 from:[EHRWhitelist.any]
             }
         ],
         '65597-402-20': [ // Turalio
             {
-                to: REMSAdminWhitelist.mitreRemsAdmin,
+                to: REMSAdminWhitelist.standardRemsAdmin,
                 from:[EHRWhitelist.any]
             }
         ]
