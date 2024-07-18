@@ -65,6 +65,7 @@ export function getDrugCodeFromMedicationRequest(medicationRequest: MedicationRe
           }
         }
       });
+      console.log('Found code: ' + JSON.stringify(coding));
       return coding;
     }
   }
@@ -140,7 +141,6 @@ export async function handleHook(
         }
       } else {
         // unsupported drug code, TODO - what to do when we don't have a service url
-        console.log("niope");
         res.json(createErrorCard('Unsupported Drug Code'));
       }
     } else {
