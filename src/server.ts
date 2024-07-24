@@ -11,10 +11,13 @@ import { Server } from '@projecttacoma/node-fhir-server-core';
 import env from 'env-var';
 import https from 'https';
 import fs from 'fs';
+import { TypedRequestBody, TypedResponseBody } from './rems-cds-hooks/resources/HookTypes';
+import { Config } from './config';
+import { IncomingMessage, ServerResponse } from 'node:http';
 
 const logger = container.get('application');
 
-const initialize = (config: any) => {
+const initialize = (config: Config): REMSIntermediary => {
   //const logLevel = _.get(config, 'logging.level');
   return new REMSIntermediary(config.fhirServerConfig)
     .configureMiddleware()
@@ -27,6 +30,11 @@ const initialize = (config: any) => {
     .setErrorRoutes();
 };
 
+type CdsHooksService = {
+  definition: CdsService;
+  handler: (req: TypedRequestBody, res: TypedResponseBody) => void;
+};
+
 /**
  * @name exports
  * @static
@@ -35,12 +43,14 @@ const initialize = (config: any) => {
  */
 class REMSIntermediary extends Server {
   services: CdsService[];
+  cdsHooksEndpoint: string | undefined;
+
   /**
    * @method constructor
    * @description Setup defaults for the server instance
    */
 
-  constructor(config: any) {
+  constructor(config: Config['fhirServerConfig']) {
     super(config);
     this.services = [];
     return this;
@@ -49,11 +59,12 @@ class REMSIntermediary extends Server {
   _app() {
     return this.app;
   }
+
   /**
    * @method configureMiddleware
    * @description Enable all the standard middleware
    */
-  configureMiddleware() {
+  configureMiddleware(): REMSIntermediary {
     super.configureMiddleware();
     this.app.set('showStackError', true);
     this.app.set('jsonp callback', true);
@@ -70,7 +81,10 @@ class REMSIntermediary extends Server {
    * @method configureLogstream
    * @description Enable streaming logs via morgan
    */
-  configureLogstream({ log, level = 'info' }: { log?: any; level?: string } = {}) {
+  configureLogstream({
+    log,
+    level = 'info'
+  }: { log?: any; level?: string } = {}): REMSIntermediary {
     super.configureLogstream;
     this.app.use(
       log
@@ -83,7 +97,7 @@ class REMSIntermediary extends Server {
     return this;
   }
 
-  registerService({ definition, handler }: { definition: any; handler: any }) {
+  registerService({ definition, handler }: CdsHooksService): REMSIntermediary {
     this.services.push(definition);
     this.app.post(`${this.cdsHooksEndpoint}/${definition.id}`, handler);
 
@@ -94,13 +108,13 @@ class REMSIntermediary extends Server {
     return this;
   }
 
-  registerCdsHooks({ discoveryEndpoint = '/cds-services' }: any) {
+  registerCdsHooks({ discoveryEndpoint }: Config['server']): REMSIntermediary {
     this.cdsHooksEndpoint = discoveryEndpoint;
     this.registerService(remsService);
     this.registerService(orderSelectService);
     this.registerService(patientViewService);
     this.registerService(encounterStartService);
-    this.app.get(discoveryEndpoint, (req: any, res: { json: (arg0: { services: any }) => any }) =>
+    this.app.get(discoveryEndpoint, (_req: any, res: { json: (arg0: { services: any }) => any }) =>
       res.json({ services: this.services })
     );
     this.app.get('/', (req: any, res: { send: (arg0: string) => any }) =>
@@ -115,7 +129,10 @@ class REMSIntermediary extends Server {
    * @param {number} port - Default port to listen on
    * @param {function} [callback] - Optional callback for listen
    */
-  listen({ port }: any, callback: any) {
+  listen(
+    { port }: Config['server'],
+    callback: () => void
+  ): https.Server<typeof IncomingMessage, typeof ServerResponse> | unknown {
     // If we want to use https, read in the cert files and start https server
     if (env.get('USE_HTTPS').required().asBool()) {
       const credentials = {

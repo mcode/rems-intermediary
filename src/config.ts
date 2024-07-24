@@ -9,7 +9,65 @@ const whitelistEnv = env.get('WHITELIST').asArray() || false;
 // If its length is 1, set it to a string, so * works
 // If there are multiple, keep them as an array
 const whitelist = whitelistEnv && whitelistEnv.length === 1 ? whitelistEnv[0] : whitelistEnv;
-export default {
+
+export type Config = {
+  server: {
+    port: number | undefined;
+    discoveryEndpoint: string;
+  };
+  smart: {
+    endpoint: string;
+  };
+  logging: {
+    level: string;
+  };
+  general: {
+    remsAdminHookPath: string;
+    remsAdminFhirEtasuPath: string;
+  };
+  database: {
+    selected: string;
+    mongoConfig: {
+      location: string | undefined;
+      db_name: string | undefined;
+      options: {
+        useUnifiedTopology: boolean;
+        useNewUrlParser: boolean;
+      };
+    };
+  };
+  fhirServerConfig: {
+    auth: {};
+    server: {
+      port: number | undefined;
+      corsOptions: {
+        maxAge: number;
+        origin: string | boolean | string[];
+      };
+    };
+    logging: {
+      level: string;
+    };
+    security: {
+      url: string;
+      valueUri: string;
+    }[];
+    profiles: {
+      guidanceresponse: {
+        service: string;
+        versions: any[];
+        operation: {
+          name: string;
+          route: string;
+          method: string;
+          reference: string;
+        }[];
+      };
+    };
+  };
+};
+
+const config: Config = {
   server: {
     port: env.get('PORT').asInt(),
     discoveryEndpoint: '/cds-services'
@@ -104,3 +162,5 @@ export default {
     }
   }
 };
+
+export default config;
