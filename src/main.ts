@@ -5,7 +5,7 @@ import { Database } from './lib/Database';
 import { MongoDatabase } from './lib/MongoDatabase';
 import constants from './constants';
 import { Globals } from './globals';
-import { FhirUtilities } from './fhir/utilities';
+import { loadPhonebook } from './hooks/hookProxy';
 
 /**
  * @name exports
@@ -37,7 +37,7 @@ export default async function main() {
   }
   Globals.databaseClient = dbClient.client;
   Globals.database = dbClient.database;
-
+  loadPhonebook();
   const app = initialize(config);
 
   // Start the application
