@@ -125,7 +125,7 @@ export async function handleHook(
     }
     if(drugCode) {
       let hook: Hook = req.body;
-      const serviceUrl = getServiceUrl(drugCode, hook.fhirServer?.toString());
+      const serviceUrl = await getServiceUrl(drugCode, hook.fhirServer?.toString());
       if(serviceUrl) {
         const url = serviceUrl + hook.hook;
         console.log('rems-admin hook url: ' + url);
