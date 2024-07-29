@@ -11,6 +11,8 @@ import { Server } from '@projecttacoma/node-fhir-server-core';
 import env from 'env-var';
 import https from 'https';
 import fs from 'fs';
+import axios from 'axios';
+import path from 'path';
 
 const logger = container.get('application');
 
@@ -24,6 +26,7 @@ const initialize = (config: any) => {
     .setPublicDirectory()
     .setProfileRoutes()
     .registerCdsHooks(config.server)
+    .setupLogin()
     .setErrorRoutes();
 };
 
@@ -103,9 +106,46 @@ class REMSIntermediary extends Server {
     this.app.get(discoveryEndpoint, (req: any, res: { json: (arg0: { services: any }) => any }) =>
       res.json({ services: this.services })
     );
-    this.app.get('/', (req: any, res: { send: (arg0: string) => any }) =>
-      res.send('Welcome to the REMS Intermediary')
-    );
+    return this;
+  }
+
+  setupLogin() {
+    this.app.get('/', async (req: any, res: { sendFile: (arg0: string) => void; }) => {
+        res.sendFile(path.join(__dirname, '../public', 'index.html'));
+
+    });
+    this.app.get('/login', async (req: any, res: { sendFile: (arg0: string) => void; }) => {
+      res.sendFile(path.join(__dirname, '../public', 'login.html'));
+
+  });
+    this.app.post('/authenticate', async (req: any, res: any) => {
+      const { username, password } = req.body;
+      const user = username || env.get('VITE_USER').asString();
+      const pw = password || env.get('VITE_PASSWORD').asString();
+      const clientId = env.get('VITE_CLIENT').asString() || 'app-login';
+      const params = new URLSearchParams();
+      params.append('username',  user);
+      params.append('password',  pw);
+      params.append('grant_type', 'password');
+      params.append('client_id', clientId);
+      axios
+        .post(
+          `${env.get('VITE_AUTH').asString()}/realms/${env
+            .get('VITE_REALM')
+            .asString()}/protocol/openid-connect/token`,
+          params,
+          { withCredentials: true }
+        )
+        .then(result => {
+          console.log('result data access token -- > ', result.data.access_token);
+          res.sendFile(path.join(__dirname, '../public', 'authenticated.html'));
+        })
+        .catch(err => {
+          console.error(err);
+          res.sendFile(path.join(__dirname, '../public', 'error.html'));
+
+        });
+    })
     return this;
   }
 
