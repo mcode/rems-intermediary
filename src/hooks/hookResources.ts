@@ -91,7 +91,7 @@ const createErrorCard = (summary: string) => {
   return {
     cards: [
       {
-        summary: summary, 
+        summary: summary,
         indicator: 'warning',
         source: {
           label: 'REMS Intermediary',
@@ -99,8 +99,8 @@ const createErrorCard = (summary: string) => {
         }
       }
     ]
-  }
-}
+  };
+};
 // handles all hooks, any supported hook should pass through this function
 export async function handleHook(
   req: TypedRequestBody,
@@ -108,7 +108,7 @@ export async function handleHook(
   hookPrefetch: ServicePrefetch,
   contextRequest: FhirResource | undefined
 ) {
-  if(contextRequest && contextRequest.resourceType === 'MedicationRequest'){
+  if (contextRequest && contextRequest.resourceType === 'MedicationRequest') {
     const drugCode = getDrugCodeFromMedicationRequest(contextRequest);
 
     const forwardData = (hook: Hook, url: string) => {
@@ -122,20 +122,20 @@ export async function handleHook(
       response.then(e => {
         res.json(e.data);
       });
-    }
-    if(drugCode) {
+    };
+    if (drugCode) {
       let hook: Hook = req.body;
       const serviceUrl = getServiceUrl(drugCode, hook.fhirServer?.toString());
-      if(serviceUrl) {
+      if (serviceUrl) {
         const url = serviceUrl + hook.hook;
         console.log('rems-admin hook url: ' + url);
-        if(hook.fhirAuthorization && hook.fhirServer && hook.fhirAuthorization.access_token) {
-          hydrate(getFhirResource, hookPrefetch, hook).then((hydratedPrefetch) => {
-            if(hydratedPrefetch) {
+        if (hook.fhirAuthorization && hook.fhirServer && hook.fhirAuthorization.access_token) {
+          hydrate(getFhirResource, hookPrefetch, hook).then(hydratedPrefetch => {
+            if (hydratedPrefetch) {
               hook.prefetch = hydratedPrefetch;
             }
             forwardData(hook, url);
-          })
+          });
         } else {
           forwardData(hook, url);
         }
