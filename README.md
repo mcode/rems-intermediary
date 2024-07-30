@@ -14,39 +14,9 @@ npm start
 Open [http://localhost:3003](http://localhost:3003) with your browser to see the result.
 
 
-## Setting Up the Database
+## Running the Mongo DB instance
 
-- Setup and Run MongoDB
+The REMS Administrator relies on MongoDB for it's backing database.
+Follow the mongodb setup instructions in the [REMS End to End Setup Guide](https://github.com/mcode/rems-setup/blob/main/EndToEndSetupGuide.md#mongodb).
 
-  - Download the latest version for your OS from [www.mongodb.com/try/download/community](https://www.mongodb.com/try/download/community)
-
-    ```bash
-    # Extract the downloaded package
-    tar -xvf <package.tgz> # Mac & Linux
-    unzip <package.zip # Windows
-
-    # Navigate into directory
-    cd <package>
-
-    # Create folder for database
-    mkdir db
-
-    # Run mongo
-    ./bin/mongod --dbpath db --port 19000
-    ```
-- Setup Mongo Shell `mongosh` to initialize the database
-
-  - Download latest version for your OS from [www.mongodb.com/try/download/shell](https://www.mongodb.com/try/download/shell)
-
-    ```bash
-    # Extract the package
-    tar -xvf <package.tgz> # Mac & Linux
-    unzip <package.zip # Windows
-
-    # Navigate into directory
-    cd <package>
-
-    # Initialize the database
-    # NOTE: Database must already be running
-    ./bin/mongosh mongodb://localhost:19000 ./mongo-init.js
-    ```
+If you would rather run with docker, follow the setup found in the [REMS Simple Setup Guide](https://github.com/mcode/rems-setup/blob/main/SimpleSetupGuide.md) (this will also setup the other REMS applications in docker as well).
