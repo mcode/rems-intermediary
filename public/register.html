@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Client Registration</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f4f4f4;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+        }
+        .container {
+            background: #fff;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+            width: 600px;
+        }
+        h1 {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+        label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: bold;
+        }
+        .textInput {
+            width: 580px;
+            padding: 8px;
+            margin-bottom: 10px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+        }
+        .ehrInput {
+            width: 450px;
+        }
+        button {
+            width: 100%;
+            padding: 10px;
+            background-color: #489d5c;
+            border: none;
+            border-radius: 4px;
+            color: white;
+            font-size: 16px;
+            cursor: pointer;
+        }
+        button:hover {
+            background-color: #218838;
+        }
+        .systemSelect{
+            height: 50px;
+            width: 400px;
+            margin-bottom: 10px;
+        }
+        .indicator {
+            color: #191919;
+            padding: 5px;
+        }
+        .ehrInputGroup {
+            margin-bottom: 5px;
+        }
+        .removeEhrButton {
+            width: 90px;
+            background-color: #f4f4f4;
+            color:black;
+        }
+        #addEhrButton {
+            background-color: #f4f4f4;
+            margin-bottom: 10px;
+            color: black;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h1>Register Client</h1>
+    <form id="registrationForm">
+        <label for="endpoint">REMS Endpoint</label>
+        <input type="text" id="endpoint" name="endpoint" class="textInput" required>
+        <label for="code">EHR Endpoint (optional)</label>
+        <div id="ehrInputs"></div>
+        <button type="button" id="addEhrButton">Add EHR</button>
+        <label for="code">Code</label>
+        <input type="text" id="code" name="code" class="textInput" required>
+        <label for="system">System</label>
+        <select id="system" name="system" class="systemSelect" required>
+            <option value="" disabled selected>Select a system</option>
+            <option value="http://hl7.org/fhir/sid/ndc">NDC</option>
+            <option value="http://www.nlm.nih.gov/research/umls/rxnorm">RXNorm</option>
+            <option value="http://snomed.info/sct">SNOMED</option>
+        </select>
+
+        <button type="submit">Register</button>
+    </form>
+    <div id="message" class="indicator"></div>
+</div>
+
+<script>
+    document.getElementById('addEhrButton').addEventListener('click', function() {
+            const ehrInputs = document.getElementById('ehrInputs');
+            const newEhrInputGroup = document.createElement('div');
+            newEhrInputGroup.className = 'ehrInputGroup';
+            newEhrInputGroup.innerHTML = `
+                <input type="text" name="ehr" class="textInput ehrInput" required>
+                <button type="button" class="removeEhrButton">Remove</button>
+            `;
+            ehrInputs.appendChild(newEhrInputGroup);
+
+            newEhrInputGroup.querySelector('.removeEhrButton').addEventListener('click', function() {
+                ehrInputs.removeChild(newEhrInputGroup);
+            });
+    });
+    document.getElementById('registrationForm').addEventListener('submit', async function(event) {
+        event.preventDefault();
+
+        const endpoint = document.getElementById('endpoint').value;
+        const code = document.getElementById('code').value;
+        const system = document.getElementById('system').value;
+        const ehrElements = document.querySelectorAll('input[name="ehr"]');
+        const ehr = Array.from(ehrElements).map(input => input.value);
+        try {
+            const response = await fetch('/register', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ endpoint, code, system, ehr}),
+            });
+
+            if (response.ok) {
+                document.getElementById('message').textContent = 'Registration successful!';
+            } else {
+                document.getElementById('message').textContent = 'Error during registration.';
+            }
+        } catch (error) {
+            document.getElementById('message').textContent = 'Error during registration.';
+        }
+    });
+</script>
+
+</body>
+</html>

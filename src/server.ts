@@ -16,6 +16,8 @@ import { Config } from './config';
 import { IncomingMessage, ServerResponse } from 'node:http';
 import axios from 'axios';
 import path from 'path';
+import { Connection } from './lib/schemas/Phonebook';
+import { EHRWhitelist } from './hooks/hookProxy';
 
 const logger = container.get('application');
 
@@ -28,6 +30,7 @@ const initialize = (config: Config): REMSIntermediary => {
     .configurePassport()
     .setPublicDirectory()
     .setProfileRoutes()
+    .registerEndpoint()
     .registerCdsHooks(config.server)
     .setupLogin()
     .setErrorRoutes();
@@ -162,7 +165,31 @@ class REMSIntermediary extends Server {
     })
     return this;
   }
-
+  registerEndpoint() {
+    this.app.get('/register', async (req: any, res: { sendFile: (arg0: string) => void; }) => {
+      res.sendFile(path.join(__dirname, '../public', 'register.html'));
+    });
+    this.app.post('/register', async (req: any, res: any) => {
+      const model = Connection;
+      console.log(req.body);
+      try {
+        const resource = new model({
+          to: req.body.endpoint,
+          from: req.body.ehr || [EHRWhitelist.any],
+          code: req.body.code,
+          system: req.body.system,
+        })
+        resource.save().then(() => {
+          res.sendStatus(200);
+        }).catch((e) => {
+          res.sendStatus(500);
+        });
+      } catch {
+        res.sendStatus(500);
+      }
+    });
+    return this;
+  }
   /**
    * @method listen
    * @description Start listening on the configured port
