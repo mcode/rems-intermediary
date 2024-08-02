@@ -77,7 +77,7 @@ export async function loadPhonebook() {
 }
 export async function getServiceUrl(coding: Coding, requester: string | undefined) {
     const connectionModel = Connection;
-    if (coding.system && coding.code && requester) {
+    if (coding.system && coding.code) {
         const connection = await connectionModel.findOne({code: coding.code, system: coding.system});
         if (!connection) {
             return undefined;
