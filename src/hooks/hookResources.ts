@@ -141,7 +141,7 @@ export async function handleHook(
         }
       } else {
         // unsupported drug code, TODO - what to do when we don't have a service url
-        res.json(createErrorCard('Unsupported Drug Code'));
+        res.json({ cards: [] });
       }
     } else {
       // drug code could not be extracted
