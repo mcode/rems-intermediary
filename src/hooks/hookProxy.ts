@@ -12,51 +12,45 @@ const REMSAdminWhitelist = {
   example: 'http://localhost:example'
 };
 
-enum SupportedCodeSystems {
-  snomed = 'http://snomed.info/sct',
-  rxnorm = 'http://www.nlm.nih.gov/research/umls/rxnorm',
-  ndc = 'http://hl7.org/fhir/sid/ndc'
-}
-
-const pbook = [
+const phonebook = [
     {
-        code: '6064',
+        code: '6064', // iPLEDGE
         system: 'http://www.nlm.nih.gov/research/umls/rxnorm',
         to: REMSAdminWhitelist.standardRemsAdmin,
         from: [EHRWhitelist.any]
     },
     {
-        code: '1237051',
+        code: '1237051', // TIRF
         system: 'http://www.nlm.nih.gov/research/umls/rxnorm',
         to: REMSAdminWhitelist.standardRemsAdmin,
         from: [EHRWhitelist.any]
     },
     {
-        code: '2183126',
+        code: '2183126', // Turalio
         system: 'http://www.nlm.nih.gov/research/umls/rxnorm',
         to: REMSAdminWhitelist.standardRemsAdmin,
         from: [EHRWhitelist.any]
     },
     {
-        code: '1666386',
+        code: '1666386', // Addyi
         system: 'http://www.nlm.nih.gov/research/umls/rxnorm',
         to: REMSAdminWhitelist.standardRemsAdmin,
         from: [EHRWhitelist.any]
     },
     {
-        code: '0245-0571-01',
+        code: '0245-0571-01', // iPLEDGE
         system: 'http://hl7.org/fhir/sid/ndc',
         to: REMSAdminWhitelist.standardRemsAdmin,
         from: [EHRWhitelist.any]
     },
     {
-        code: '63459-502-30',
+        code: '63459-502-30', // TIRF
         system: 'http://hl7.org/fhir/sid/ndc',
         to: REMSAdminWhitelist.standardRemsAdmin,
         from: [EHRWhitelist.any]
     },
     {
-        code: '65597-402-20',
+        code: '65597-402-20', // Turalio
         system: 'http://hl7.org/fhir/sid/ndc',
         to: REMSAdminWhitelist.standardRemsAdmin,
         from: [EHRWhitelist.any]
@@ -64,7 +58,7 @@ const pbook = [
 ]
 export async function loadPhonebook() {
     const model = Connection;
-    for (const entry of pbook) {
+    for (const entry of phonebook) {
         const doesExist = await model.exists({ code: entry.code, to: entry.to });
         if(!doesExist) {
             const resource = new model(entry);
@@ -83,11 +77,7 @@ export async function getServiceUrl(coding: Coding, requester: string | undefine
             return undefined;
         }
         const sources = connection.from.filter((registeredRequester) => {
-            if (registeredRequester === EHRWhitelist.any) {
-                return true;
-            } else if (registeredRequester === requester) {
-                return true;
-            }
+            return registeredRequester === EHRWhitelist.any || registeredRequester === requester;
         });
         if(sources.length > 0) {
             // valid requester, forward request
