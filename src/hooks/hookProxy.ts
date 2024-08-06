@@ -2,7 +2,7 @@ import config from "../config";
 import { Coding } from "fhir/r4";
 import { Connection } from "../lib/schemas/Phonebook";
 
-enum EHRWhitelist {
+export enum EHRWhitelist {
     any = 'any', // wildcard, accept anything
     testEhr = 'http://localhost:8080/test-ehr/r4'
 }
@@ -69,6 +69,7 @@ export async function loadPhonebook() {
         }
     }
 }
+
 export async function getServiceUrl(coding: Coding, requester: string | undefined) {
     const connectionModel = Connection;
     if (coding.system && coding.code) {
