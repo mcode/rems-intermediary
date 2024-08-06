@@ -125,8 +125,8 @@ export async function handleHook(
     };
     if (drugCode) {
       let hook: Hook = req.body;
-      const serviceUrl = getServiceUrl(drugCode, hook.fhirServer?.toString());
-      if (serviceUrl) {
+      const serviceUrl = await getServiceUrl(drugCode, hook.fhirServer?.toString());
+      if(serviceUrl) {
         const url = serviceUrl + hook.hook;
         console.log('rems-admin hook url: ' + url);
         if (hook.fhirAuthorization && hook.fhirServer && hook.fhirAuthorization.access_token) {
@@ -141,7 +141,7 @@ export async function handleHook(
         }
       } else {
         // unsupported drug code, TODO - what to do when we don't have a service url
-        res.json(createErrorCard('Unsupported Drug Code'));
+        res.json({ cards: [] });
       }
     } else {
       // drug code could not be extracted

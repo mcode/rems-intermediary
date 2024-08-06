@@ -33,7 +33,6 @@
     "cors": "^2.8.5",
     "dotenv": "^16.3.1",
     "env-var": "^7.3.1",
-    "express": "^4.17.1",
     "fhirclient": "^2.5.2",
     "fhirpath": "^3.2.0",
     "glob": "^10.2.1",
