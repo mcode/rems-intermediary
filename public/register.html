@@ -126,7 +126,7 @@
         const ehrElements = document.querySelectorAll('input[name="ehr"]');
         const ehr = Array.from(ehrElements).map(input => input.value);
         try {
-            const response = await fetch('/register', {
+            const response = await fetch('/api/connections', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',

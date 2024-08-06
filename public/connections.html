@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Connections</title>
+    <style>
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        table, th, td {
+            border: 1px solid black;
+        }
+        th, td {
+            padding: 10px;
+            text-align: left;
+        }
+        th {
+            background-color: #f2f2f2;
+        }
+        .highlight {
+            background-color: #d8d8d8;
+        }
+        input[type="text"] {
+            width: 100%;
+        }
+    </style>
+</head>
+<body>
+    <h1>Connections</h1>
+    <table>
+        <thead>
+            <tr>
+                <th class="highlight">Code</th>
+                <th>To</th>
+                <th>From</th>
+                <th>System</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody id="connectionsTableBody">
+        </tbody>
+    </table>
+
+    <script>
+        async function fetchConnections() {
+            const response = await fetch('/api/connections');
+            const connections = await response.json();
+            const tableBody = document.getElementById('connectionsTableBody');
+            // react lite
+            connections.forEach(connection => {
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td class="highlight"><input type="text" value="${connection.code}" data-id="${connection._id}" data-field="code"></td>
+                    <td><input type="text" value="${connection.to}" data-id="${connection._id}" data-field="to"></td>
+                    <td><input type="text" value="${connection.from.join(', ')}" data-id="${connection._id}" data-field="from"></td>
+                    <td><input type="text" value="${connection.system}" data-id="${connection._id}" data-field="system"></td>
+                    <td>
+                        <button onclick="saveConnection('${connection._id}')">Save</button>
+                        <button onclick="deleteConnection('${connection._id}')">Delete</button>
+                    </td>
+                `;
+                tableBody.appendChild(row);
+            });
+        }
+
+        async function saveConnection(id) {
+            const codeInput = document.querySelector(`input[data-id="${id}"][data-field="code"]`);
+            const toInput = document.querySelector(`input[data-id="${id}"][data-field="to"]`);
+            const fromInput = document.querySelector(`input[data-id="${id}"][data-field="from"]`);
+            const systemInput = document.querySelector(`input[data-id="${id}"][data-field="system"]`);
+
+            const updatedConnection = {
+                code: codeInput.value,
+                to: toInput.value,
+                from: fromInput.value.split(',').map(item => item.trim()),
+                system: systemInput.value
+            };
+
+            const response = await fetch(`/api/connections/${id}`, {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(updatedConnection)
+            });
+
+            if (response.ok) {
+                alert('Connection updated successfully');
+            } else {
+                alert('Error updating connection');
+            }
+        }
+
+        async function deleteConnection(id) {
+            const response = await fetch(`/api/connections/${id}`, {
+                method: 'DELETE'
+            });
+
+            if (response.ok) {
+                alert('Connection deleted successfully');
+                document.location.reload();
+            } else {
+                alert('Error deleting connection');
+            }
+        }
+        document.addEventListener('DOMContentLoaded', fetchConnections);
+    </script>
+</body>
+</html>

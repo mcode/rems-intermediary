@@ -169,7 +169,18 @@ class REMSIntermediary extends Server {
     this.app.get('/register', async (req: any, res: { sendFile: (arg0: string) => void; }) => {
       res.sendFile(path.join(__dirname, '../public', 'register.html'));
     });
-    this.app.post('/register', async (req: any, res: any) => {
+    this.app.get('/connections', async (req: any, res: { sendFile: (arg0: string) => void; }) => {
+      res.sendFile(path.join(__dirname, '../public', 'connections.html'));
+    });
+    this.app.get('/api/connections', async (req: any, res: any) => {
+      try {
+          const connections = await Connection.find();
+          res.send(connections);
+      } catch (error) {
+          res.status(500).send({ message: 'Error fetching connections', error });
+      }
+  });
+    this.app.post('/api/connections', async (req: any, res: any) => {
       const model = Connection;
       console.log(req.body);
       try {
@@ -184,10 +195,42 @@ class REMSIntermediary extends Server {
         }).catch((e) => {
           res.sendStatus(500);
         });
-      } catch {
-        res.sendStatus(500);
+      } catch (error) {
+        res.status(400).send({ message: 'Error registering connection', error });
       }
     });
+    this.app.delete('/api/connections/:id', async (req: any, res: any) => {
+      try {
+          const { id } = req.params;
+          const deletedConnection = await Connection.findByIdAndDelete(id);
+  
+          if (!deletedConnection) {
+              return res.status(404).send({ message: 'Connection not found' });
+          }
+  
+          res.send({ message: 'Connection deleted successfully' });
+      } catch (error) {
+          res.status(400).send({ message: 'Error deleting connection', error });
+      }
+  });
+    this.app.put('/api/connections/:id', async (req: any, res: any) => {
+      try {
+          const { id } = req.params;
+          const updateData = req.body;
+  
+          const updatedConnection = await Connection.findByIdAndUpdate(id, updateData, {
+              new: true,
+          });
+  
+          if (!updatedConnection) {
+              return res.status(404).send({ message: 'Connection not found' });
+          }
+  
+          res.send(updatedConnection);
+      } catch (error) {
+          res.status(400).send({ message: 'Error updating connection', error });
+      }
+  });
     return this;
   }
   /**
