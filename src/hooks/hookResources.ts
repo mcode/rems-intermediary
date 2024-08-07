@@ -12,6 +12,7 @@ import Card, { Link, Suggestion, Action } from '../cards/Card';
 import {
   Hook,
   HookPrefetch,
+  SupportedHooks,
   TypedRequestBody,
   TypedResponseBody
 } from '../rems-cds-hooks/resources/HookTypes';
@@ -101,6 +102,7 @@ const createErrorCard = (summary: string) => {
     ]
   };
 };
+
 // handles all hooks, any supported hook should pass through this function
 export async function handleHook(
   req: TypedRequestBody,
@@ -108,6 +110,8 @@ export async function handleHook(
   hookPrefetch: ServicePrefetch,
   contextRequest: FhirResource | undefined
 ) {
+  let hookType = req?.body?.hook; 
+
   if (contextRequest && contextRequest.resourceType === 'MedicationRequest') {
     const drugCode = getDrugCodeFromMedicationRequest(contextRequest);
 
@@ -140,7 +144,7 @@ export async function handleHook(
           forwardData(hook, url);
         }
       } else {
-        // unsupported drug code, TODO - what to do when we don't have a service url
+        // unsupported drug code, send back empty card list
         res.json({ cards: [] });
       }
     } else {
@@ -148,7 +152,96 @@ export async function handleHook(
       res.json(createErrorCard('Could not extract drug code from request'));
     }
   } else {
-    // context request is not a medicationRequest
-    res.json(createErrorCard('No Medication Request found in hook'));
+    if (hookType === SupportedHooks.ORDER_SELECT || hookType === SupportedHooks.ORDER_SIGN) {
+      // context request is not a medicationRequest
+      res.json(createErrorCard('No Medication Request found in hook'));
+
+    } else if (hookType === SupportedHooks.PATIENT_VIEW || hookType === SupportedHooks.ENCOUNTER_START) {
+
+      async function processMedications(hook: Hook) {
+
+        if (hook && hook.prefetch && hook.prefetch.medicationRequests?.resourceType === 'Bundle') {
+          let medicationRequests = hook?.prefetch?.medicationRequests;
+
+          // loop through the prefetch medications
+          if (medicationRequests.entry) {
+            let medReqCount = medicationRequests?.entry.length;
+            if (medReqCount <= 0) {
+              res.json({ cards: [] });
+              return;
+            }
+
+            let urlList : string[] = [];
+            medicationRequests?.entry.forEach(async bundleEntry => {
+
+              if (bundleEntry?.resource?.resourceType == 'MedicationRequest') {
+                const drugCode = getDrugCodeFromMedicationRequest(bundleEntry?.resource);
+
+                if (drugCode) {
+                  console.log('    medication: ' + drugCode?.display);
+                  const serviceUrl = await getServiceUrl(drugCode, hook.fhirServer?.toString());
+                  if(serviceUrl) {
+                    const url = serviceUrl + hook.hook;
+                    urlList.push(url);
+                  }
+                }
+              }
+
+              medReqCount--;
+              if (medReqCount <= 0) {
+                let cards: Card[] = [];
+                const uniqueUrls = [...new Set(urlList)];
+                let urlCount = uniqueUrls.length;
+                if (urlCount <= 0) {
+                  res.json({ cards: [] });
+                  return;
+                }
+                uniqueUrls.forEach((url: string) => {
+
+                  // remove the auth token before any forwarding occurs
+                  delete hook.fhirAuthorization;
+                  const options = {
+                    method: 'POST',
+                    data: hook
+                  };
+                  const response = axios(url, options);
+                  response.then(e => {
+                    cards = [...cards, ...e.data.cards];
+
+                    urlCount--;
+                    if (urlCount <=0) {
+                      // return the final list of cards
+                      res.json({ cards });
+                    }
+                  });
+                });
+              }
+            });
+          } else {
+            res.json({ cards: [] });
+          }
+
+        } else {
+          res.json(createErrorCard('No MedicationRequests in ' + hookType + ' hook'));
+        }
+      }
+
+      // complete the prefetch
+      let hook: Hook = req.body;
+
+      if(hook.fhirAuthorization && hook.fhirServer && hook.fhirAuthorization.access_token) {
+        hydrate(getFhirResource, hookPrefetch, hook).then(async (hydratedPrefetch) => {
+          if(hydratedPrefetch) {
+            hook.prefetch = hydratedPrefetch;
+          }
+          await processMedications(hook);
+        })
+      } else {
+        await processMedications(hook);
+      }
+
+    } else {
+      res.json(createErrorCard('Unsupported hook type: ' + hookType));
+    }
   }
 }
