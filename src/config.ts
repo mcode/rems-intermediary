@@ -22,7 +22,7 @@ export type Config = {
     level: string;
   };
   general: {
-    remsAdminHookPath: string;
+    remsAdminHookPath: string | undefined;
     remsAdminFhirEtasuPath: string;
   };
   database: {
@@ -80,7 +80,7 @@ const config: Config = {
   },
   general: {
     //resourcePath: 'src/cds-library/CRD-DTR'
-    remsAdminHookPath: 'http://localhost:8090/cds-services/rems-',
+    remsAdminHookPath: env.get('REMS_ADMIN_HOOK_PATH').asString(),
     remsAdminFhirEtasuPath: 'http://localhost:8090/4_0_0/GuidanceResponse/$rems-etasu'
   },
   database: {
