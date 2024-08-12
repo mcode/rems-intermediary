@@ -2,7 +2,6 @@ import { Coding, Medication, MedicationRequest, Parameters } from "fhir/r4";
 import { EHRWhitelist, getServiceConnection } from "../hooks/hookProxy";
 import axios from "axios";
 
-// TODO: This operation should forward the request to the actual server using the phonebook. 
 const getMedicationCode = (
     medication: Medication | MedicationRequest | undefined
   ): Coding | undefined => {
@@ -44,6 +43,7 @@ module.exports.create = async (args: any, req: any) => {
 
 
 module.exports.remsEtasu = async (args: any, context: any, logger: any) => {
+    logger.info("Processing REMS Etasu request");
     const parameters: Parameters = args?.resource;
     let medication: Medication | MedicationRequest | undefined;
 
