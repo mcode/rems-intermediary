@@ -18,6 +18,7 @@ import axios from 'axios';
 import path from 'path';
 import { Connection } from './lib/schemas/Phonebook';
 import { EHRWhitelist } from './hooks/hookProxy';
+import cookieParser from 'cookie-parser';
 
 const logger = container.get('application');
 
@@ -78,6 +79,7 @@ class REMSIntermediary extends Server {
     this.app.use(bodyParser.json({ limit: '50mb' }));
 
     this.app.use(cors());
+    this.app.use(cookieParser());
     this.app.options('*', cors());
 
     return this;
@@ -154,7 +156,11 @@ class REMSIntermediary extends Server {
           { withCredentials: true }
         )
         .then(result => {
-          console.log('result data access token -- > ', result.data.access_token);
+          res.cookie('access_token', result.data.access_token, {
+            httpOnly: true, // Make the cookie HTTP only
+            maxAge: 60 * 60 * 24 * 1000, // 1 day in milliseconds
+            path: '/', // Cookie path
+          });
           res.sendFile(path.join(__dirname, '../public', 'authenticated.html'));
         })
         .catch(err => {
@@ -167,10 +173,18 @@ class REMSIntermediary extends Server {
   }
   registerEndpoint() {
     this.app.get('/register', async (req: any, res: { sendFile: (arg0: string) => void; }) => {
-      res.sendFile(path.join(__dirname, '../public', 'register.html'));
+      if (req.cookies && req.cookies.access_token) {
+        res.sendFile(path.join(__dirname, '../public', 'register.html'));
+      } else {
+        res.sendFile(path.join(__dirname, '../public', 'login.html'));
+      }
     });
     this.app.get('/connections', async (req: any, res: { sendFile: (arg0: string) => void; }) => {
-      res.sendFile(path.join(__dirname, '../public', 'connections.html'));
+      if (req.cookies && req.cookies.access_token) {
+        res.sendFile(path.join(__dirname, '../public', 'connections.html'));
+      } else {
+        res.sendFile(path.join(__dirname, '../public', 'login.html'));
+      }
     });
     this.app.get('/api/connections', async (req: any, res: any) => {
       try {
