@@ -97,4 +97,4 @@ Following are a list of modifiable paths:
 | VITE_PASSWORD   | `alice`                                            | Password for connecting to Keycloak authentication server.                                            |
 | VITE_CLIENT     | `app-login`                                        | Client used for connecting to keycloak authentication server.                                         |
 | REMS_ADMIN_HOOK_PATH | `http://localhost:8090/cds-services/rems-`    | REMS Administrator default base path for CDS Hooks.   |
-| REMS_ADMIN_FHIR_PATH   |  `http://localhost:8090/4_0_0/`   | REMS Administrator default base path for the FHIR Server   |
+| REMS_ADMIN_FHIR_PATH   |  `http://localhost:8090/4_0_0`   | REMS Administrator default base path for the FHIR Server   |
