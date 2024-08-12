@@ -6,6 +6,10 @@ const ConnectionSchema = new Schema({
     type: String,
     required: true
   },
+  toEtasu: {
+    type: String,
+    required: true
+  },
   from: [{
     type: String,
     required: true

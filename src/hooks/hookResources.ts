@@ -22,7 +22,7 @@ import axios from 'axios';
 import { ServicePrefetch } from '../rems-cds-hooks/resources/CdsService';
 import { hydrate } from '../rems-cds-hooks/prefetch/PrefetchHydrator';
 import { responseToJSON } from 'fhirclient/lib/lib';
-import { getServiceUrl } from './hookProxy';
+import { getServiceConnection } from './hookProxy';
 
 type HandleCallback = (
   res: TypedResponseBody,
@@ -129,9 +129,9 @@ export async function handleHook(
     };
     if (drugCode) {
       let hook: Hook = req.body;
-      const serviceUrl = await getServiceUrl(drugCode, hook.fhirServer?.toString());
-      if(serviceUrl) {
-        const url = serviceUrl + hook.hook;
+      const serviceConnection = await getServiceConnection(drugCode, hook.fhirServer?.toString());
+      if(serviceConnection) {
+        const url = serviceConnection.to + hook.hook;
         console.log('rems-admin hook url: ' + url);
         if (hook.fhirAuthorization && hook.fhirServer && hook.fhirAuthorization.access_token) {
           hydrate(getFhirResource, hookPrefetch, hook).then(hydratedPrefetch => {
@@ -179,9 +179,9 @@ export async function handleHook(
 
                 if (drugCode) {
                   console.log('    medication: ' + drugCode?.display);
-                  const serviceUrl = await getServiceUrl(drugCode, hook.fhirServer?.toString());
-                  if(serviceUrl) {
-                    const url = serviceUrl + hook.hook;
+                  const serviceConnection = await getServiceConnection(drugCode, hook.fhirServer?.toString());
+                  if(serviceConnection) {
+                    const url = serviceConnection.to + hook.hook;
                     urlList.push(url);
                   }
                 }
