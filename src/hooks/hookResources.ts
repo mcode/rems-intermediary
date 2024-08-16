@@ -110,7 +110,7 @@ export async function handleHook(
   hookPrefetch: ServicePrefetch,
   contextRequest: FhirResource | undefined
 ) {
-  let hookType = req?.body?.hook;
+  const hookType = req?.body?.hook;
 
   if (contextRequest && contextRequest.resourceType === 'MedicationRequest') {
     const drugCode = getDrugCodeFromMedicationRequest(contextRequest);
@@ -128,7 +128,7 @@ export async function handleHook(
       });
     };
     if (drugCode) {
-      let hook: Hook = req.body;
+      const hook: Hook = req.body;
       const serviceConnection = await getServiceConnection(drugCode, hook.fhirServer?.toString());
       if (serviceConnection) {
         const url = serviceConnection.to + hook.hook;
@@ -161,7 +161,7 @@ export async function handleHook(
     ) {
       async function processMedications(hook: Hook) {
         if (hook && hook.prefetch && hook.prefetch.medicationRequests?.resourceType === 'Bundle') {
-          let medicationRequests = hook?.prefetch?.medicationRequests;
+          const medicationRequests = hook?.prefetch?.medicationRequests;
 
           // loop through the prefetch medications
           if (medicationRequests.entry) {
@@ -171,7 +171,7 @@ export async function handleHook(
               return;
             }
 
-            let urlList: string[] = [];
+            const urlList: string[] = [];
             medicationRequests?.entry.forEach(async bundleEntry => {
               if (bundleEntry?.resource?.resourceType == 'MedicationRequest') {
                 const drugCode = getDrugCodeFromMedicationRequest(bundleEntry?.resource);
@@ -227,7 +227,7 @@ export async function handleHook(
       }
 
       // complete the prefetch
-      let hook: Hook = req.body;
+      const hook: Hook = req.body;
 
       if (hook.fhirAuthorization && hook.fhirServer && hook.fhirAuthorization.access_token) {
         hydrate(getFhirResource, hookPrefetch, hook).then(async hydratedPrefetch => {
