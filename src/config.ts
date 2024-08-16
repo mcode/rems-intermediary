@@ -81,7 +81,8 @@ const config: Config = {
   general: {
     //resourcePath: 'src/cds-library/CRD-DTR'
     remsAdminHookPath: env.get('REMS_ADMIN_HOOK_PATH').asString(),
-    remsAdminFhirEtasuPath: env.get('REMS_ADMIN_FHIR_PATH').asString() + '/GuidanceResponse/$rems-etasu'
+    remsAdminFhirEtasuPath:
+      env.get('REMS_ADMIN_FHIR_PATH').asString() + '/GuidanceResponse/$rems-etasu'
   },
   database: {
     selected: 'mongo',

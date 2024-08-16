@@ -10,10 +10,12 @@ const ConnectionSchema = new Schema({
     type: String,
     required: true
   },
-  from: [{
-    type: String,
-    required: true
-  }],
+  from: [
+    {
+      type: String,
+      required: true
+    }
+  ],
   code: {
     type: String,
     required: true
@@ -21,7 +23,7 @@ const ConnectionSchema = new Schema({
   system: {
     type: String,
     required: true
-  },
+  }
 });
 
 export const Connection = mongoose.model('Connection', ConnectionSchema);

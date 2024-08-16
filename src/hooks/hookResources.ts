@@ -110,7 +110,7 @@ export async function handleHook(
   hookPrefetch: ServicePrefetch,
   contextRequest: FhirResource | undefined
 ) {
-  let hookType = req?.body?.hook; 
+  let hookType = req?.body?.hook;
 
   if (contextRequest && contextRequest.resourceType === 'MedicationRequest') {
     const drugCode = getDrugCodeFromMedicationRequest(contextRequest);
@@ -130,7 +130,7 @@ export async function handleHook(
     if (drugCode) {
       let hook: Hook = req.body;
       const serviceConnection = await getServiceConnection(drugCode, hook.fhirServer?.toString());
-      if(serviceConnection) {
+      if (serviceConnection) {
         const url = serviceConnection.to + hook.hook;
         console.log('rems-admin hook url: ' + url);
         if (hook.fhirAuthorization && hook.fhirServer && hook.fhirAuthorization.access_token) {
@@ -155,11 +155,11 @@ export async function handleHook(
     if (hookType === SupportedHooks.ORDER_SELECT || hookType === SupportedHooks.ORDER_SIGN) {
       // context request is not a medicationRequest
       res.json(createErrorCard('No Medication Request found in hook'));
-
-    } else if (hookType === SupportedHooks.PATIENT_VIEW || hookType === SupportedHooks.ENCOUNTER_START) {
-
+    } else if (
+      hookType === SupportedHooks.PATIENT_VIEW ||
+      hookType === SupportedHooks.ENCOUNTER_START
+    ) {
       async function processMedications(hook: Hook) {
-
         if (hook && hook.prefetch && hook.prefetch.medicationRequests?.resourceType === 'Bundle') {
           let medicationRequests = hook?.prefetch?.medicationRequests;
 
@@ -171,16 +171,18 @@ export async function handleHook(
               return;
             }
 
-            let urlList : string[] = [];
+            let urlList: string[] = [];
             medicationRequests?.entry.forEach(async bundleEntry => {
-
               if (bundleEntry?.resource?.resourceType == 'MedicationRequest') {
                 const drugCode = getDrugCodeFromMedicationRequest(bundleEntry?.resource);
 
                 if (drugCode) {
                   console.log('    medication: ' + drugCode?.display);
-                  const serviceConnection = await getServiceConnection(drugCode, hook.fhirServer?.toString());
-                  if(serviceConnection) {
+                  const serviceConnection = await getServiceConnection(
+                    drugCode,
+                    hook.fhirServer?.toString()
+                  );
+                  if (serviceConnection) {
                     const url = serviceConnection.to + hook.hook;
                     urlList.push(url);
                   }
@@ -197,7 +199,6 @@ export async function handleHook(
                   return;
                 }
                 uniqueUrls.forEach((url: string) => {
-
                   // remove the auth token before any forwarding occurs
                   delete hook.fhirAuthorization;
                   const options = {
@@ -209,7 +210,7 @@ export async function handleHook(
                     cards = [...cards, ...e.data.cards];
 
                     urlCount--;
-                    if (urlCount <=0) {
+                    if (urlCount <= 0) {
                       // return the final list of cards
                       res.json({ cards });
                     }
@@ -220,7 +221,6 @@ export async function handleHook(
           } else {
             res.json({ cards: [] });
           }
-
         } else {
           res.json(createErrorCard('No MedicationRequests in ' + hookType + ' hook'));
         }
@@ -229,17 +229,16 @@ export async function handleHook(
       // complete the prefetch
       let hook: Hook = req.body;
 
-      if(hook.fhirAuthorization && hook.fhirServer && hook.fhirAuthorization.access_token) {
-        hydrate(getFhirResource, hookPrefetch, hook).then(async (hydratedPrefetch) => {
-          if(hydratedPrefetch) {
+      if (hook.fhirAuthorization && hook.fhirServer && hook.fhirAuthorization.access_token) {
+        hydrate(getFhirResource, hookPrefetch, hook).then(async hydratedPrefetch => {
+          if (hydratedPrefetch) {
             hook.prefetch = hydratedPrefetch;
           }
           await processMedications(hook);
-        })
+        });
       } else {
         await processMedications(hook);
       }
-
     } else {
       res.json(createErrorCard('Unsupported hook type: ' + hookType));
     }
