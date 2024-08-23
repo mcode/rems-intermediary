@@ -35,7 +35,6 @@ export type Config = {
     };
   };
   fhirServerConfig: {
-    auth: {};
     server: {
       port: number | undefined;
       corsOptions: {
@@ -93,7 +92,6 @@ const config: Config = {
     }
   },
   fhirServerConfig: {
-    auth: {},
     server: {
       port: env.get('PORT').asInt(),
       corsOptions: {

@@ -35,9 +35,6 @@ const getMedicationCode = (
   }
   return drugCode;
 };
-module.exports.searchById = async (args: any) => {};
-
-module.exports.create = async (args: any, req: any) => {};
 
 module.exports.remsEtasu = async (args: any, context: any, logger: any) => {
   logger.info('Processing REMS Etasu request');
