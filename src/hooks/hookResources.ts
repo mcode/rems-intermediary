@@ -1,35 +1,16 @@
-import {
-  MedicationRequest,
-  Coding,
-  FhirResource,
-  Task,
-  Patient,
-  Bundle,
-  Medication,
-  BundleEntry
-} from 'fhir/r4';
-import Card, { Link, Suggestion, Action } from '../cards/Card';
+import { MedicationRequest, FhirResource } from 'fhir/r4';
+import Card, { Link } from '../cards/Card';
 import {
   Hook,
-  HookPrefetch,
   SupportedHooks,
   TypedRequestBody,
   TypedResponseBody
 } from '../rems-cds-hooks/resources/HookTypes';
-import config from '../config';
 
 import axios from 'axios';
 import { ServicePrefetch } from '../rems-cds-hooks/resources/CdsService';
 import { hydrate } from '../rems-cds-hooks/prefetch/PrefetchHydrator';
-import { responseToJSON } from 'fhirclient/lib/lib';
 import { getServiceConnection } from './hookProxy';
-
-type HandleCallback = (
-  res: TypedResponseBody,
-  hydratedPrefetch: HookPrefetch | undefined,
-  contextRequest: FhirResource | undefined,
-  patient: FhirResource | undefined
-) => Promise<void>;
 
 export interface CardRule {
   links: Link[];
