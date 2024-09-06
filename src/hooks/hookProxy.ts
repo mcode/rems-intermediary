@@ -67,7 +67,8 @@ const phonebook = [
 export async function loadPhonebook() {
   const model = Connection;
   for (const entry of phonebook) {
-    const doesExist = await model.exists({ code: entry.code, to: entry.to });
+    const doesExist = await model.exists({ code: entry.code, system: entry.system });
+
     if (!doesExist) {
       const resource = new model(entry);
       await resource.save();
