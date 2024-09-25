@@ -11,7 +11,7 @@ import { Server } from '@projecttacoma/node-fhir-server-core';
 import env from 'env-var';
 import https from 'https';
 import fs from 'fs';
-import { TypedRequestBody, TypedResponseBody } from './rems-cds-hooks/resources/HookTypes';
+import { TypedResponseBody } from './rems-cds-hooks/resources/HookTypes';
 import { Config } from './config';
 import { IncomingMessage, ServerResponse } from 'node:http';
 import axios from 'axios';
@@ -39,7 +39,7 @@ const initialize = (config: Config): REMSIntermediary => {
 
 type CdsHooksService = {
   definition: CdsService;
-  handler: (req: TypedRequestBody, res: TypedResponseBody) => void;
+  handler: (req: Express.Request, res: TypedResponseBody) => void;
 };
 
 /**
