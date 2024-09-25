@@ -6,8 +6,6 @@ import * as env from 'env-var';
 const whitelistEnv = env.get('WHITELIST').asArray() || false;
 
 // If no whitelist is present, disable CORS
-// If its length is 1, set it to a string, so * works
-// If there are multiple, keep them as an array
 const whitelist = whitelistEnv && whitelistEnv.length === 1 ? whitelistEnv[0] : whitelistEnv;
 
 export type Config = {
@@ -37,7 +35,6 @@ export type Config = {
     };
   };
   fhirServerConfig: {
-    auth: {};
     server: {
       port: number | undefined;
       corsOptions: {
@@ -79,9 +76,9 @@ const config: Config = {
     level: 'info'
   },
   general: {
-    //resourcePath: 'src/cds-library/CRD-DTR'
     remsAdminHookPath: env.get('REMS_ADMIN_HOOK_PATH').asString(),
-    remsAdminFhirEtasuPath: env.get('REMS_ADMIN_FHIR_PATH').asString() + '/GuidanceResponse/$rems-etasu'
+    remsAdminFhirEtasuPath:
+      env.get('REMS_ADMIN_FHIR_PATH').asString() + '/GuidanceResponse/$rems-etasu'
   },
   database: {
     selected: 'mongo',
@@ -89,29 +86,14 @@ const config: Config = {
       location: env.get('MONGO_URL').asString(),
       db_name: env.get('MONGO_DB_NAME').asString(),
       options: {
-        //auto_reconnect: true,
         useUnifiedTopology: true,
         useNewUrlParser: true
       }
     }
   },
   fhirServerConfig: {
-    auth: {
-      // This server's URI
-      //resourceServer: env.get('RESOURCE_SERVER').required().asUrlString()
-      //
-      // if you use this strategy, you need to add the corresponding env vars to docker-compose
-      //
-      // strategy: {
-      // 	name: 'bearer',
-      // 	useSession: false,
-      // 	service: './src/strategies/bearer.strategy.js'
-      // },
-    },
     server: {
-      // support various ENV that uses PORT vs SERVER_PORT
       port: env.get('PORT').asInt(),
-      // allow Access-Control-Allow-Origin
       corsOptions: {
         maxAge: 86400,
         origin: whitelist
@@ -120,10 +102,6 @@ const config: Config = {
     logging: {
       level: env.get('LOGGING_LEVEL').required().asString()
     },
-    //
-    // If you want to set up conformance statement with security enabled
-    // Uncomment the following block
-    //
     security: [
       {
         url: 'authorize',
@@ -133,18 +111,7 @@ const config: Config = {
         url: 'token',
         valueUri: `${env.get('AUTH_SERVER_URI').required().asUrlString()}/token`
       }
-      // optional - registration
     ],
-    //
-    // Add any profiles you want to support.  Each profile can support multiple versions
-    // if supported by core.  To support multiple versions, just add the versions to the array.
-    //
-    // Example:
-    // Account: {
-    //		service: './src/services/account/account.service.js',
-    //		versions: [ VERSIONS['4_0_0'], VERSIONS['3_0_1'], VERSIONS['1_0_2'] ]
-    // },
-    //
     profiles: {
       guidanceresponse: {
         service: './src/services/guidanceresponse.service.ts',
