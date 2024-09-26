@@ -8,7 +8,9 @@ import { Button } from '@mui/material';
 import { useEffect, useState } from 'react';
 import MenuItem from '@mui/material/MenuItem';
 import FormControl from '@mui/material/FormControl';
+import InputLabel from '@mui/material/InputLabel';
 import Select, { SelectChangeEvent } from '@mui/material/Select';
+import axios from 'axios';
 
 
 const EditPopup = (props) => {
@@ -20,17 +22,46 @@ const EditPopup = (props) => {
         setUpdatedConnection(data);
     }, [data])
 
-    const saveConnection = () => {
+    const saveConnection = async () => {
         console.log('want to save connection -- > ', updatedConnection);
+        const url = `http://localhost:3003/api/connections/${updatedConnection._id}`;
+        await axios
+        .put(url, updatedConnection)
+        .then(async function (response: any) {
+            if (response.status === 200) {
+                console.log('Success - Updated connection ');
+                handleClose();
+            }
+        })
+        .catch((error: any) => {
+            console.log('Error deleteing connection -- > ', error);
+        });
     }
 
-    const createConnection = () => {
+    const createConnection = async () => {
         console.log('want to create connection -- > ', updatedConnection);
+        const url = 'http://localhost:3003/api/connections';
+        await axios
+        .post(url, updatedConnection)
+        .then(function (response: { status: any }) {
+            if (response.status === 200) {
+                console.log('Success - created client');
+                handleClose();
+            }
+        })
+        .catch((error: any) => {
+            console.log('Error registering client-- > ', error);
+        });
     }
 
     const cancelConnectionEdit = () => {
         setUpdatedConnection(props.data);
         handleClose();
+    }
+
+    const fieldsFilled = () => {
+        return (updatedConnection?.code && updatedConnection?.system 
+            && updatedConnection?.to && updatedConnection?.toEtasu);
     }
 
     return (
@@ -42,8 +73,8 @@ const EditPopup = (props) => {
             aria-labelledby="alert-dialog-title"
             aria-describedby="alert-dialog-description"
         >
-            <DialogTitle id="alert-dialog-title">{title}</DialogTitle>
-            <DialogContent>
+            <DialogTitle id="alert-dialog-title" className='popup-title'>{title}</DialogTitle>
+            <DialogContent style={{paddingTop: '15px', borderBottom: '1px solid #F1F3F4'}}>
                 <div className='section'>
                     <DialogContentText id="alert-dialog-description">
                         Code:
@@ -64,7 +95,28 @@ const EditPopup = (props) => {
                 </div>
                 <div className='section'>
                     <DialogContentText id="alert-dialog-description">
-                        To:
+                        System:
+                    </DialogContentText>
+                    <FormControl fullWidth>
+                        <InputLabel id="demo-simple-select-label">Select a system</InputLabel>
+                        <Select
+                            labelId="demo-simple-select-label"
+                            id="demo-simple-select"
+                            size="small"
+                            value={updatedConnection?.system}
+                            onChange={(event: SelectChangeEvent) => {
+                                setUpdatedConnection((prevState: any) => ({...prevState, system: event.target.value}));
+                            }}
+                            >
+                                <MenuItem value={"http://hl7.org/fhir/sid/ndc"}>NDC</MenuItem>
+                                <MenuItem value={"http://www.nlm.nih.gov/research/umls/rxnorm"}>RXNorm</MenuItem>
+                                <MenuItem value={"http://snomed.info/sct"}>SNOMED</MenuItem>
+                        </Select>
+                    </FormControl>
+                </div>
+                <div className='section'>
+                    <DialogContentText id="alert-dialog-description" style={{width: '145px'}}>
+                        REMS Endpoint:
                     </DialogContentText>
                     <TextField
                         autoFocus
@@ -81,8 +133,8 @@ const EditPopup = (props) => {
                     />
                 </div>
                 <div className='section'>
-                    <DialogContentText id="alert-dialog-description" style={{width: '85px'}}>
-                        To Etasu:
+                    <DialogContentText id="alert-dialog-description" style={{width: '220px'}}>
+                        REMS Etasu Endpoint:
                     </DialogContentText>
                     <TextField
                         autoFocus
@@ -99,8 +151,8 @@ const EditPopup = (props) => {
                     />
                 </div>
                 <div className='section'>
-                    <DialogContentText id="alert-dialog-description">
-                        From:
+                    <DialogContentText id="alert-dialog-description" style={{width: '140px'}}>
+                        From (optional):
                     </DialogContentText>
                     <TextField
                         autoFocus
@@ -116,34 +168,15 @@ const EditPopup = (props) => {
                         variant="standard"
                     />
                 </div>
-                <div className='section'>
-                    <DialogContentText id="alert-dialog-description">
-                        System:
-                    </DialogContentText>
-                    <FormControl fullWidth>
-                        <Select
-                            labelId="demo-simple-select-label"
-                            id="demo-simple-select"
-                            value={updatedConnection?.system}
-                            onChange={(event: SelectChangeEvent) => {
-                                setUpdatedConnection((prevState: any) => ({...prevState, system: event.target.value}));
-                            }}
-                            >
-                                <MenuItem value={"http://hl7.org/fhir/sid/ndc"}>NDC</MenuItem>
-                                <MenuItem value={"http://www.nlm.nih.gov/research/umls/rxnorm"}>RXNorm</MenuItem>
-                                <MenuItem value={"http://snomed.info/sct"}>SNOMED</MenuItem>
-                        </Select>
-                    </FormControl>
-                </div>
             </DialogContent>
             <DialogActions>
-                <Button onClick={cancelConnectionEdit}>Cancel</Button>
+                <Button onClick={cancelConnectionEdit} variant='outlined' sx={{borderColor: '#53508E', color: '#53508E'}}>Cancel</Button>
                 { addNew ? 
-                    <Button onClick={createConnection} autoFocus>
+                    <Button onClick={createConnection} autoFocus variant='outlined' sx={{borderColor: '#53508E', color: '#53508E'}} disabled={!fieldsFilled()}>
                         Create
                     </Button>
                 : 
-                    <Button onClick={saveConnection} autoFocus>
+                    <Button onClick={saveConnection} variant='outlined' sx={{borderColor: '#53508E', color: '#53508E'}} autoFocus>
                         Save
                     </Button>
                 }

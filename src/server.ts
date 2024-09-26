@@ -196,9 +196,9 @@ class REMSIntermediary extends Server {
       console.log(req.body);
       try {
         const resource = new model({
-          to: req.body.endpoint,
-          toEtasu: req.body.etasuEndpoint,
-          from: req.body.ehr || [EHRWhitelist.any],
+          to: req.body.to,
+          toEtasu: req.body.toEtasu,
+          from: req.body.from || [EHRWhitelist.any],
           code: req.body.code,
           system: req.body.system
         });

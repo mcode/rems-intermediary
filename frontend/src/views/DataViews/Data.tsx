@@ -2,7 +2,6 @@ import { SyntheticEvent, useState } from 'react';
 import { Box, Tab, Tabs } from '@mui/material';
 import { Container } from '@mui/system';
 import Connections from './Connections';
-import Register from './Register';
 
 function a11yProps(index: number) {
   return {

@@ -58,36 +58,34 @@ const Connections = () => {
     };
 
     const deleteConnection = async (event: any, row: Connection) => {
-        console.log('row --- > ', row);
-        // const url = 'http://localhost:3003/api/connections';
-        // await axios
-        // .get(url)
-        // .then(function (response: { data }) {
-        //     setAllData(response.data);
-        //     console.log('response data -- > ', response.data);
-        //     setIsLoading(false);
-        // })
-        // .catch((error: any) => {
-        //     setIsLoading(false);
-        //     console.log('Error -- > ', error);
-        // });
+        const url = `http://localhost:3003/api/connections/${row._id}`;
+        await axios
+        .delete(url)
+        .then(async function (response: any) {
+            if (response.status === 200) {
+                console.log('Success - delete connection ');
+                await getExistingConnections();
+            }
+        })
+        .catch((error: any) => {
+            console.log('Error deleteing connection -- > ', error);
+        });
     };
 
     const editConnection = (event: any, row: Connection) => {
-        console.log('want to edit -- > ', row);
         setAddNew(false);
         setTitle('Edit Connection');
         setConnection(row);
         setOpenEdit(true);
     }
 
-    const handleClose = () => {
+    const handleClose = async () => {
         setOpenEdit(false);
+        await getExistingConnections();
     }
 
-    const registerClient = (event: any, row: Connection) => {
-        setConnection({code: '', to: '', toEtasu: '', from: '', system: ''});
-        console.log('want to register client -- ');
+    const registerClient = () => {
+        setConnection({code: '', to: '', toEtasu: '', from: [''], system: '', _id: ''});
         setAddNew(true);
         setTitle('Register Client');
         setOpenEdit(true);
@@ -100,6 +98,7 @@ const Connections = () => {
               <Button
                 variant="contained"
                 startIcon={<Refresh />}
+                sx={{backgroundColor: '#53508E'}} 
                 onClick={() => {
                     getExistingConnections();
                 }}
@@ -128,6 +127,7 @@ const Connections = () => {
                         <div className="right-btn">
                             <Button
                                 variant="contained"
+                                sx={{backgroundColor: '#53508E'}} 
                                 startIcon={<AddIcon />}
                                 onClick={() => {
                                     registerClient();
@@ -137,6 +137,7 @@ const Connections = () => {
                             </Button>
                             <Button
                                 variant="contained"
+                                sx={{backgroundColor: '#53508E'}} 
                                 startIcon={<Refresh />}
                                 onClick={() => {
                                     getExistingConnections();
