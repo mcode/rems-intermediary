@@ -8,7 +8,7 @@ import { Button } from '@mui/material';
 import { useEffect, useState } from 'react';
 import MenuItem from '@mui/material/MenuItem';
 import FormControl from '@mui/material/FormControl';
-import InputLabel from '@mui/material/InputLabel';
+import Typography from '@mui/material/Typography';
 import Select, { SelectChangeEvent } from '@mui/material/Select';
 import axios from 'axios';
 
@@ -23,7 +23,6 @@ const EditPopup = (props) => {
     }, [data])
 
     const saveConnection = async () => {
-        console.log('want to save connection -- > ', updatedConnection);
         const url = `http://localhost:3003/api/connections/${updatedConnection._id}`;
         await axios
         .put(url, updatedConnection)
@@ -98,12 +97,18 @@ const EditPopup = (props) => {
                         System:
                     </DialogContentText>
                     <FormControl fullWidth>
-                        <InputLabel id="demo-simple-select-label">Select a system</InputLabel>
                         <Select
                             labelId="demo-simple-select-label"
                             id="demo-simple-select"
                             size="small"
                             value={updatedConnection?.system}
+                            displayEmpty
+                            renderValue={(value: any) => {
+                                if (!value) {
+                                    return <Typography color="gray">Select a system</Typography>;
+                                }
+                                return value;
+                            }}
                             onChange={(event: SelectChangeEvent) => {
                                 setUpdatedConnection((prevState: any) => ({...prevState, system: event.target.value}));
                             }}
