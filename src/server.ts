@@ -129,22 +129,20 @@ class REMSIntermediary extends Server {
   }
 
   setupLogin() {
-    this.app.get('/', async (req: any, res: { sendFile: (arg0: string) => void; }) => {
-        res.sendFile(path.join(__dirname, '../public', 'index.html'));
-
+    this.app.get('/', async (req: any, res: { sendFile: (arg0: string) => void }) => {
+      res.sendFile(path.join(__dirname, '../public', 'index.html'));
     });
-    this.app.get('/login', async (req: any, res: { sendFile: (arg0: string) => void; }) => {
+    this.app.get('/login', async (req: any, res: { sendFile: (arg0: string) => void }) => {
       res.sendFile(path.join(__dirname, '../public', 'login.html'));
-
-  });
+    });
     this.app.post('/authenticate', async (req: any, res: any) => {
       const { username, password } = req.body;
       const user = username || env.get('VITE_USER').asString();
       const pw = password || env.get('VITE_PASSWORD').asString();
       const clientId = env.get('VITE_CLIENT').asString() || 'app-login';
       const params = new URLSearchParams();
-      params.append('username',  user);
-      params.append('password',  pw);
+      params.append('username', user);
+      params.append('password', pw);
       params.append('grant_type', 'password');
       params.append('client_id', clientId);
       axios
@@ -159,27 +157,26 @@ class REMSIntermediary extends Server {
           res.cookie('access_token', result.data.access_token, {
             httpOnly: true, // Make the cookie HTTP only
             maxAge: 60 * 60 * 24 * 1000, // 1 day in milliseconds
-            path: '/', // Cookie path
+            path: '/' // Cookie path
           });
           res.sendFile(path.join(__dirname, '../public', 'authenticated.html'));
         })
         .catch(err => {
           console.error(err);
           res.sendFile(path.join(__dirname, '../public', 'error.html'));
-
         });
-    })
+    });
     return this;
   }
   registerEndpoint() {
-    this.app.get('/register', async (req: any, res: { sendFile: (arg0: string) => void; }) => {
+    this.app.get('/register', async (req: any, res: { sendFile: (arg0: string) => void }) => {
       if (req.cookies && req.cookies.access_token) {
         res.sendFile(path.join(__dirname, '../public', 'register.html'));
       } else {
         res.sendFile(path.join(__dirname, '../public', 'login.html'));
       }
     });
-    this.app.get('/connections', async (req: any, res: { sendFile: (arg0: string) => void; }) => {
+    this.app.get('/connections', async (req: any, res: { sendFile: (arg0: string) => void }) => {
       if (req.cookies && req.cookies.access_token) {
         res.sendFile(path.join(__dirname, '../public', 'connections.html'));
       } else {
@@ -188,64 +185,67 @@ class REMSIntermediary extends Server {
     });
     this.app.get('/api/connections', async (req: any, res: any) => {
       try {
-          const connections = await Connection.find();
-          res.send(connections);
+        const connections = await Connection.find();
+        res.send(connections);
       } catch (error) {
-          res.status(500).send({ message: 'Error fetching connections', error });
+        res.status(500).send({ message: 'Error fetching connections', error });
       }
-  });
+    });
     this.app.post('/api/connections', async (req: any, res: any) => {
       const model = Connection;
       console.log(req.body);
       try {
         const resource = new model({
-          to: req.body.endpoint,
-          toEtasu: req.body.etasuEndpoint,
-          from: req.body.ehr || [EHRWhitelist.any],
+          to: req.body.to,
+          toEtasu: req.body.toEtasu,
+          from: req.body.from || [EHRWhitelist.any],
           code: req.body.code,
-          system: req.body.system,
-        })
-        resource.save().then(() => {
-          res.sendStatus(200);
-        }).catch((e) => {
-          res.sendStatus(500);
+          system: req.body.system
         });
+        resource
+          .save()
+          .then(() => {
+            res.sendStatus(200);
+          })
+          .catch(e => {
+            res.sendStatus(500);
+          });
       } catch (error) {
         res.status(400).send({ message: 'Error registering connection', error });
       }
     });
     this.app.delete('/api/connections/:id', async (req: any, res: any) => {
       try {
-          const { id } = req.params;
-          const deletedConnection = await Connection.findByIdAndDelete(id);
-  
-          if (!deletedConnection) {
-              return res.status(404).send({ message: 'Connection not found' });
-          }
-  
-          res.send({ message: 'Connection deleted successfully' });
+        const { id } = req.params;
+        const deletedConnection = await Connection.findByIdAndDelete(id);
+
+        if (!deletedConnection) {
+          return res.status(404).send({ message: 'Connection not found' });
+        }
+
+        res.send({ message: 'Connection deleted successfully' });
       } catch (error) {
-          res.status(400).send({ message: 'Error deleting connection', error });
+        res.status(400).send({ message: 'Error deleting connection', error });
       }
-  });
+    });
     this.app.put('/api/connections/:id', async (req: any, res: any) => {
       try {
-          const { id } = req.params;
-          const updateData = req.body;
-  
-          const updatedConnection = await Connection.findByIdAndUpdate(id, updateData, {
-              new: true,
-          });
-  
-          if (!updatedConnection) {
-              return res.status(404).send({ message: 'Connection not found' });
-          }
-  
-          res.send(updatedConnection);
+        const { id } = req.params;
+        const updateData = req.body;
+
+        const updatedConnection = await Connection.findByIdAndUpdate(id, updateData, {
+          new: true
+        });
+
+        if (!updatedConnection) {
+          return res.status(404).send({ message: 'Connection not found' });
+        }
+
+        res.send(updatedConnection);
       } catch (error) {
-          res.status(400).send({ message: 'Error updating connection', error });
+        res.status(400).send({ message: 'Error updating connection', error });
       }
-  });
+    });
     return this;
   }
   /**

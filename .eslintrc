@@ -1,0 +1,20 @@
+{
+  "extends": ["prettier", "eslint:recommended", "plugin:@typescript-eslint/recommended"],
+  "plugins": ["@typescript-eslint", "prettier", "mongo"],
+  "parser": "@typescript-eslint/parser",
+  "parserOptions": {
+    "ecmaVersion": 2018,
+    "sourceType": "module"
+  },
+  "rules": {
+    "prettier/prettier": ["error"],
+    "semi": ["off"],
+    "@typescript-eslint/semi": ["error", "always"],
+    "quotes": ["error", "single", { "avoidEscape": true }],
+    "@typescript-eslint/no-explicit-any": ["off"],
+    "@typescript-eslint/no-unused-vars": ["warn", { "argsIgnorePattern": "^_" }]
+  },
+  "env": {
+    "mongo": true
+  }
+}
