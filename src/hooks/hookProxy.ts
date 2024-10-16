@@ -1,12 +1,10 @@
 import config from '../config';
 import { Coding } from 'fhir/r4';
 import { Connection } from '../lib/schemas/Phonebook';
-import env from 'env-var';
-
 
 export enum EHRWhitelist {
   any = 'any', // wildcard, accept anything
-  testEhr = env.get('EHR_URL').asString()
+  testEhr = 
 }
 
 const REMSAdminWhitelist = {

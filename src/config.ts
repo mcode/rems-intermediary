@@ -12,6 +12,7 @@ export type Config = {
   server: {
     port: number | undefined;
     discoveryEndpoint: string;
+    backendApiBase: string | undefined;
   };
   smart: {
     endpoint: string;
@@ -22,6 +23,7 @@ export type Config = {
   general: {
     remsAdminHookPath: string | undefined;
     remsAdminFhirEtasuPath: string;
+    ehrUrl: string | undefined;
   };
   database: {
     selected: string;
@@ -67,7 +69,8 @@ export type Config = {
 const config: Config = {
   server: {
     port: env.get('PORT').asInt(),
-    discoveryEndpoint: '/cds-services'
+    discoveryEndpoint: '/cds-services',
+    backendApiBase: env.get('BACKEND_API_BASE').asString(),
   },
   smart: {
     endpoint: env.get('SMART_ENDPOINT').required().asUrlString()
@@ -78,7 +81,8 @@ const config: Config = {
   general: {
     remsAdminHookPath: env.get('REMS_ADMIN_HOOK_PATH').asString(),
     remsAdminFhirEtasuPath:
-      env.get('REMS_ADMIN_FHIR_PATH').asString() + '/GuidanceResponse/$rems-etasu'
+      env.get('REMS_ADMIN_FHIR_PATH').asString() + '/GuidanceResponse/$rems-etasu',
+      ehrUrl: env.get('EHR_URL').asString(),
   },
   database: {
     selected: 'mongo',
