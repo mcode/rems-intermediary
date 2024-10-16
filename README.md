@@ -42,7 +42,7 @@ Next, start the frontend with the following:
 
 ### `npm start`
 
-Go to the UI running on http://localhost:5173/ (or whichever port it was run on)
+Go to the UI running on http://localhost:9080/ (or whichever port it was run on)
 
 Still need to update docker to start the UI automatically. 
 
@@ -116,3 +116,4 @@ Following are a list of modifiable paths:
 | VITE_CLIENT     | `app-login`                                        | Client used for connecting to keycloak authentication server.                                         |
 | REMS_ADMIN_HOOK_PATH | `http://localhost:8090/cds-services/rems-`    | REMS Administrator default base path for CDS Hooks.   |
 | REMS_ADMIN_FHIR_PATH   |  `http://localhost:8090/4_0_0`   | REMS Administrator default base path for the FHIR Server   |
+| FRONTEND_PORT            | `9080`                                             | Port that the frontend  server should run on, change if there are conflicts with port usage.                   |

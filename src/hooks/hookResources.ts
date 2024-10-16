@@ -6,7 +6,7 @@ import {
   TypedRequestBody,
   TypedResponseBody
 } from '../rems-cds-hooks/resources/HookTypes';
-
+import env from 'env-var';
 import axios from 'axios';
 import { ServicePrefetch } from '../rems-cds-hooks/resources/CdsService';
 import { hydrate } from '../rems-cds-hooks/prefetch/PrefetchHydrator';
@@ -77,7 +77,7 @@ const createErrorCard = (summary: string) => {
         indicator: 'warning',
         source: {
           label: 'REMS Intermediary',
-          url: 'http://localhost:3003'
+          url: env.get('BACKEND_API_BASE').asString()
         }
       }
     ]

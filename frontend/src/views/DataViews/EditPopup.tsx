@@ -23,7 +23,7 @@ const EditPopup = (props) => {
     }, [data])
 
     const saveConnection = async () => {
-        const url = `http://localhost:3003/api/connections/${updatedConnection._id}`;
+        const url = process.env.BACKEND_API_BASE + `/api/connections/${updatedConnection._id}`;
         await axios
         .put(url, updatedConnection)
         .then(async function (response: any) {
@@ -39,7 +39,7 @@ const EditPopup = (props) => {
 
     const createConnection = async () => {
         console.log('want to create connection -- > ', updatedConnection);
-        const url = 'http://localhost:3003/api/connections';
+        const url = process.env.BACKEND_API_BASE + '/api/connections';
         await axios
         .post(url, updatedConnection)
         .then(function (response: { status: any }) {
