@@ -25,7 +25,7 @@ const Connections = () => {
       }, []);
     
     const getExistingConnections = async () => {
-    const url = 'http://localhost:3003/api/connections';
+    const url = process.env.BACKEND_API_BASE + '/api/connections';
     await axios
         .get(url)
         .then(function (response: { data }) {

@@ -8,7 +8,7 @@ import orderSelectService from './hooks/rems.orderselect';
 import patientViewService from './hooks/rems.patientview';
 import encounterStartService from './hooks/rems.encounterstart';
 import { Server } from '@projecttacoma/node-fhir-server-core';
-import env from 'env-var';
+import * as env from 'env-var';
 import https from 'https';
 import fs from 'fs';
 import { TypedRequestBody, TypedResponseBody } from './rems-cds-hooks/resources/HookTypes';
