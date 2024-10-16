@@ -2,9 +2,9 @@ import config from '../config';
 import { Coding } from 'fhir/r4';
 import { Connection } from '../lib/schemas/Phonebook';
 
-export enum EHRWhitelist {
-  any = 'any', // wildcard, accept anything
-  testEhr = 
+export const EHRWhitelist = {
+  any: 'any', // wildcard, accept anything
+  testEhr: config.general.ehrUrl,
 }
 
 const REMSAdminWhitelist = {
