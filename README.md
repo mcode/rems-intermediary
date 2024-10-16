@@ -117,3 +117,5 @@ Following are a list of modifiable paths:
 | REMS_ADMIN_HOOK_PATH | `http://localhost:8090/cds-services/rems-`    | REMS Administrator default base path for CDS Hooks.   |
 | REMS_ADMIN_FHIR_PATH   |  `http://localhost:8090/4_0_0`   | REMS Administrator default base path for the FHIR Server   |
 | FRONTEND_PORT            | `9080`                                             | Port that the frontend  server should run on, change if there are conflicts with port usage.                   |
+| BACKEND_API_BASE            | `http://localhost:3003`                                             | Base URL for the backend server of the intermediary                   |
+| EHR_URL           | `http://localhost:8080/test-ehr/r4`                                            | URL for the EHR System                  |
