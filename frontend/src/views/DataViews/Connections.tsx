@@ -44,7 +44,7 @@ const Connections = () => {
       }, []);
     
     const getExistingConnections = async () => {
-        const url = 'http://localhost:3003/api/connections';
+        const url = process.env.BACKEND_API_BASE + '/api/connections';
         await axios
         .get(url)
         .then(function (response: { data: SetStateAction<Connection[]> }) {
@@ -58,7 +58,7 @@ const Connections = () => {
     };
 
     const deleteConnection = async (event: any, row: Connection) => {
-        const url = `http://localhost:3003/api/connections/${row._id}`;
+        const url = process.env.BACKEND_API_BASE + `/api/connections/${row._id}`;
         await axios
         .delete(url)
         .then(async function (response: any) {
