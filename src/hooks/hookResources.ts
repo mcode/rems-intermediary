@@ -12,6 +12,8 @@ import { ServicePrefetch } from '../rems-cds-hooks/resources/CdsService';
 import { hydrate } from '../rems-cds-hooks/prefetch/PrefetchHydrator';
 import { getServiceConnection } from './hookProxy';
 
+const https = require('https');
+
 export interface CardRule {
   links: Link[];
   summary?: string;
@@ -97,16 +99,27 @@ export async function handleHook(
     const drugCode = getDrugCodeFromMedicationRequest(contextRequest);
 
     const forwardData = (hook: Hook, url: string) => {
+      console.log('zzzz forwardData: ');
+      console.log(url); //zzzz
+      console.log(hook); //zzzz
       // remove the auth token before any forwarding occurs
       delete hook.fhirAuthorization;
+      const httpsAgent = new https.Agent({ rejectUnauthorized: false });
       const options = {
         method: 'POST',
-        data: hook
+        data: hook,
+        httpsAgent
       };
-      const response = axios(url, options);
-      response.then(e => {
-        res.json(e.data);
-      });
+      try {
+        console.log(url); //zzzz
+        const response = axios(url, options);
+        response.then(e => {
+          res.json(e.data);
+        });
+      } catch (err) {
+        console.log('zzzz: error in forwardData call:');
+        console.log(err);
+      }
     };
     if (drugCode) {
       const hook: Hook = req.body;
