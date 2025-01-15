@@ -107,17 +107,17 @@ export async function handleHook(
         data: hook,
         timeout: 5000,
       };
-      try {
-        console.log(url); //zzzz
-        const response = axios(url, options);
-        response.then(e => {
-          res.json(e.data);
-        });
-      } catch (err) {
+
+      console.log(url); //zzzz
+      const response = axios(url, options);
+      response.then(e => {
+        res.json(e.data);
+      })
+      .catch(err => {
         console.log('zzzz: error in forwardData call:');
         console.log(err);
-        res.json({ cards: [] });
-      }
+        res.json({ cards: [] }); // Return fallback response
+      });
     };
     if (drugCode) {
       const hook: Hook = req.body;
