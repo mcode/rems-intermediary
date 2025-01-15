@@ -105,7 +105,7 @@ export async function handleHook(
       const options = {
         method: 'POST',
         data: hook,
-        timeout: 10000,
+        timeout: 5000,
       };
       try {
         console.log(url); //zzzz
@@ -116,6 +116,7 @@ export async function handleHook(
       } catch (err) {
         console.log('zzzz: error in forwardData call:');
         console.log(err);
+        res.json({ cards: [] });
       }
     };
     if (drugCode) {
