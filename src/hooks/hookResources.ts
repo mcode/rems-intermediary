@@ -101,7 +101,8 @@ export async function handleHook(
       delete hook.fhirAuthorization;
       const options = {
         method: 'POST',
-        data: hook
+        data: hook,
+        timeout: 10000
       };
       const response = axios(url, options);
       response.then(e => {
