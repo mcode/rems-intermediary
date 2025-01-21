@@ -97,9 +97,6 @@ export async function handleHook(
     const drugCode = getDrugCodeFromMedicationRequest(contextRequest);
 
     const forwardData = (hook: Hook, url: string) => {
-      console.log('zzzz forwardData: ');
-      console.log(url); //zzzz
-      console.log(hook); //zzzz
       // remove the auth token before any forwarding occurs
       delete hook.fhirAuthorization;
       const options = {
@@ -107,14 +104,11 @@ export async function handleHook(
         data: hook,
         timeout: 5000,
       };
-
-      console.log(url); //zzzz
       const response = axios(url, options);
       response.then(e => {
         res.json(e.data);
       })
       .catch(err => {
-        console.log('zzzz: error in forwardData call:');
         console.log(err);
         res.json({ cards: [] }); // Return fallback response
       });

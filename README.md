@@ -63,8 +63,6 @@ Launches the test runner in the interactive watch mode.\
 See the section about [running tests](https://create-react-app.dev/docs/running-tests/) for more information.
 
 ## Usage
-
-zzzz
 The REMS Intermediary interacts with the [Request Generator](https://github.com/mcode/request-generator), [REMS SMART on FHIR app](https://github.com/mcode/rems-smart-on-fhir), and an [EHR](https://github.com/mcode/test-ehr). These apps are provided as part of the REMS ecosystem, but any individual part may be swapped out for something custom. The REMS Admin responds to CDS Hooks requests as well as the FHIR operation for the REMS ETASU check ($rems-etasu).
 
 Typically, a CDS Hook will be sent from the EHR to the REMS Admin, which will respond with cards that contain information about next steps. These cards may contain a link to a SMART app. Clicking on these links in the Request Generator or REMS SMART on FHIR App acting as the EHR will launch a SMART app automatically. These links will contain information on the requirements that must be met for the REMS program. This includes forms for registration and acknowledgement of the risks involved. The REMS Intermediary stands in between the REMS Admin and CDS Hooks client. It receives the hooks call from the EHR (client), performs the prefetch on the data if necessary, and forwards the request to the appropriate REMS Administrator with the FHIR Authorization information stripped out. The return from these calls are forwarded back to the original client. This allows the client to only know about the intermediary for the REMS interactions, simplifying registration. The SMART on FHIR apps from each REMS Administration will however still need to be registered with each EHR.
