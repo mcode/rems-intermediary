@@ -6,7 +6,7 @@ import {
   TypedRequestBody,
   TypedResponseBody
 } from '../rems-cds-hooks/resources/HookTypes';
-
+import config from '../config'
 import axios from 'axios';
 import { ServicePrefetch } from '../rems-cds-hooks/resources/CdsService';
 import { hydrate } from '../rems-cds-hooks/prefetch/PrefetchHydrator';
@@ -77,7 +77,7 @@ const createErrorCard = (summary: string) => {
         indicator: 'warning',
         source: {
           label: 'REMS Intermediary',
-          url: 'http://localhost:3003'
+          url: config.server.backendApiBase,
         }
       }
     ]
@@ -101,11 +101,16 @@ export async function handleHook(
       delete hook.fhirAuthorization;
       const options = {
         method: 'POST',
-        data: hook
+        data: hook,
+        timeout: 5000,
       };
       const response = axios(url, options);
       response.then(e => {
         res.json(e.data);
+      })
+      .catch(err => {
+        console.log(err);
+        res.json({ cards: [] }); // Return fallback response
       });
     };
     if (drugCode) {

@@ -1,4 +1,4 @@
-import cors from 'cors';
+import cors, { CorsOptions } from 'cors';
 import bodyParser from 'body-parser';
 import container from './lib/winston';
 import morgan from 'morgan';
@@ -8,7 +8,7 @@ import orderSelectService from './hooks/rems.orderselect';
 import patientViewService from './hooks/rems.patientview';
 import encounterStartService from './hooks/rems.encounterstart';
 import { Server } from '@projecttacoma/node-fhir-server-core';
-import env from 'env-var';
+import * as env from 'env-var';
 import https from 'https';
 import fs from 'fs';
 import { TypedRequestBody, TypedResponseBody } from './rems-cds-hooks/resources/HookTypes';
@@ -25,7 +25,7 @@ const logger = container.get('application');
 const initialize = (config: Config): REMSIntermediary => {
   //const logLevel = _.get(config, 'logging.level');
   return new REMSIntermediary(config.fhirServerConfig)
-    .configureMiddleware()
+    .configureMiddleware(config.fhirServerConfig.server.corsOptions)
     .configureSession()
     .configureHelmet()
     .configurePassport()
@@ -71,16 +71,16 @@ class REMSIntermediary extends Server {
    * @method configureMiddleware
    * @description Enable all the standard middleware
    */
-  configureMiddleware(): REMSIntermediary {
+  configureMiddleware(corsOptions: CorsOptions): REMSIntermediary {
     super.configureMiddleware();
     this.app.set('showStackError', true);
     this.app.set('jsonp callback', true);
     this.app.use(bodyParser.urlencoded({ limit: '50mb', extended: true }));
     this.app.use(bodyParser.json({ limit: '50mb' }));
 
-    this.app.use(cors());
     this.app.use(cookieParser());
-    this.app.options('*', cors());
+    this.app.use(cors(corsOptions));
+    this.app.options('*', cors(corsOptions));
 
     return this;
   }
