@@ -1,6 +1,8 @@
 # Description 
 The [REMS](https://www.fda.gov/drugs/drug-safety-and-availability/risk-evaluation-and-mitigation-strategies-rems) Intermediary application is an app that acts as an intermediary between the provider client systems and the REMS Administrator for [CDS Hooks](https://cds-hooks.org/) calls of the type order-sign, order-select, patient-view and encounter-start. This allows for the clients to register the intermediary and send all requests to it instead of registering individual REMS Administrators. The REMS Intermediary application also acts as an intermediary between the provider and pharmacy applications for querying the ETASU status using the FHIR Operation $rems-etasu on the GuidanceResponse resource.
 
+Disclaimer: The SPL Zip file information downloaded from the rems-directory repo is test data not to be representative of real world SPL information. While they are based on the actual SPL Zip from FDA, the files have been modified for the purposes of the prototype and may even be out of date. The data in these files are not intended for medical use.
+
 # Getting Started with REMS Intermediary
 
 To get started, first clone the repository using a method that is most convenient for you.  If using git, run the following command:
@@ -117,3 +119,5 @@ Following are a list of modifiable paths:
 | FRONTEND_PORT            | `9080`                                             | Port that the frontend  server should run on, change if there are conflicts with port usage.                   |
 | BACKEND_API_BASE            | `http://localhost:3003`                                             | Base URL for the backend server of the intermediary                   |
 | EHR_URL           | `http://localhost:8080/test-ehr/r4`                                            | URL for the EHR System                  |
+| DIRECTORY_SERVICE_URL | http://localhost:3323 | The url for the directory server |
+| SPL_ZIP_FILE_NAME | TESTDATA_rems_document_and_rems_indexing_spl_files.zip | The file name of the spl zip expected to be downloaded |
