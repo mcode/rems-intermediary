@@ -25,6 +25,7 @@ export type Config = {
     remsAdminFhirEtasuPath: string;
     ehrUrl: string | undefined;
     discoveryEndpoint: string | undefined;
+    splZipFileName: string;
   };
   database: {
     selected: string;
@@ -82,6 +83,7 @@ const config: Config = {
   general: {
     discoveryEndpoint: env.get('DIRECTORY_SERVICE_URL').asString(),
     remsAdminHookPath: env.get('REMS_ADMIN_HOOK_PATH').asString(),
+    splZipFileName: env.get('SPL_ZIP_FILE_NAME').asString() || 'TESTDATA_rems_document_and_rems_indexing_spl_files.zip',
     remsAdminFhirEtasuPath:
       env.get('REMS_ADMIN_FHIR_PATH').asString() + '/GuidanceResponse/$rems-etasu',
       ehrUrl: env.get('EHR_URL').asString(),

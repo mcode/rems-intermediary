@@ -27,7 +27,7 @@ const REMSAdminWhitelist = {
   standardRemsAdmin: config?.general?.remsAdminHookPath,
   standardRemsAdminEtasu: config?.general?.remsAdminFhirEtasuPath,
   discoveryUrl: config?.general?.discoveryEndpoint,
-  example: 'http://localhost:example'
+  zipFileName: config?.general?.splZipFileName,
 };
 
 const phonebook = [
@@ -252,7 +252,7 @@ async function getDrugXmlFromSplZip(rems_spl_date?: string): Promise<any> {
   const baseFilePath = join(process.cwd(), 'rems-spl-files');
   const extractPath = join(baseFilePath, 'extracted');
   const innerExtractPath = join(baseFilePath, 'inner_extracted');
-  const mainZipPath = join(baseFilePath, 'TESTDATA_rems_document_and_rems_indexing_spl_files.zip');
+  const mainZipPath = join(baseFilePath, REMSAdminWhitelist.zipFileName);
   
   // Create directories if they don't exist
   if (!fs.existsSync(baseFilePath)) {
