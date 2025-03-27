@@ -23,6 +23,22 @@ const ConnectionSchema = new Schema({
   system: {
     type: String,
     required: true
+  },
+  brand_name: {
+    type: String,
+    required: true
+  },
+  generic_name: {
+    type: String,
+    required: false
+  },
+  directoryLookupType: {
+    type: String,
+    required: false
+  },
+  rems_spl_date: {
+    type: String,
+    required: false
   }
 });
 

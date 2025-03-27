@@ -24,6 +24,7 @@ export type Config = {
     remsAdminHookPath: string | undefined;
     remsAdminFhirEtasuPath: string;
     ehrUrl: string | undefined;
+    discoveryEndpoint: string | undefined;
   };
   database: {
     selected: string;
@@ -79,6 +80,7 @@ const config: Config = {
     level: 'info'
   },
   general: {
+    discoveryEndpoint: env.get('DIRECTORY_SERVICE_URL').asString(),
     remsAdminHookPath: env.get('REMS_ADMIN_HOOK_PATH').asString(),
     remsAdminFhirEtasuPath:
       env.get('REMS_ADMIN_FHIR_PATH').asString() + '/GuidanceResponse/$rems-etasu',
