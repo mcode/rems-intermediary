@@ -26,7 +26,9 @@ interface MedicationApiResponse {
 const REMSAdminWhitelist = {
   standardRemsAdmin: config?.general?.remsAdminHookPath,
   standardRemsAdminEtasu: config?.general?.remsAdminFhirEtasuPath,
-  discoveryUrl: config?.general?.discoveryEndpoint,
+  discoveryUrlBase: config?.general?.discoveryBaseUrl,
+  discoveryApiEndpoint: config?.general?.discoveryApiUrl,
+  discoverySplZipEndpoint: config?.general?.discoverySplZipUrl,
   zipFileName: config?.general?.splZipFileName,
 };
 
@@ -274,9 +276,9 @@ async function getDrugXmlFromSplZip(rems_spl_date?: string): Promise<any> {
     // 1. Download and extract the main zip if needed
     if (!mainZipExists || !mainZipExtracted) {
       if (!mainZipExists) {
-        console.log(`Main SPL zip not found. Downloading from ${REMSAdminWhitelist.discoveryUrl}/drugs/spl.zip`);
+        console.log(`Main SPL zip not found. Downloading from ${REMSAdminWhitelist.discoveryUrlBase}${REMSAdminWhitelist.discoverySplZipEndpoint}`);
         
-        const splZipUrl = `${REMSAdminWhitelist.discoveryUrl}/drugs/spl.zip`;
+        const splZipUrl = `${REMSAdminWhitelist.discoveryUrlBase}${REMSAdminWhitelist.discoverySplZipEndpoint}`;
         const response = await axios.get(splZipUrl, { responseType: 'arraybuffer' });
         fs.writeFileSync(mainZipPath, response.data);
         
@@ -399,7 +401,7 @@ async function getRemsFromDirectoryApi(ndc_code: string): Promise<MedicationApiR
     searchValue = ndc_code
     
     // Call the directory service API
-    const apiUrl = `${REMSAdminWhitelist.discoveryUrl}/drug/ndc.json?search=${searchKey}="${searchValue}"`;
+    const apiUrl = `${REMSAdminWhitelist.discoveryUrlBase}${REMSAdminWhitelist.discoveryApiEndpoint}?search=${searchKey}="${searchValue}"`;
     console.log(`Fetching ${searchKey} ${searchValue} from directory service API: ${apiUrl}`);
     
     const response = await axios.get(apiUrl);
