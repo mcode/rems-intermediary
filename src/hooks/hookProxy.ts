@@ -268,34 +268,27 @@ async function getDrugXmlFromSplZip(rems_spl_date?: string): Promise<any> {
   }
   
   try {
-    // Check if we need to download the main zip file
-    let mainZipExists = fs.existsSync(mainZipPath);
-    let mainZipExtracted = fs.existsSync(join(extractPath, 'rems_document_spl_files')) && 
-                          fs.readdirSync(join(extractPath, 'rems_document_spl_files')).length > 0;
-    
-    // 1. Download and extract the main zip if needed
-    if (!mainZipExists || !mainZipExtracted) {
-      if (!mainZipExists) {
-        console.log(`Main SPL zip not found. Downloading from ${REMSAdminWhitelist.discoveryUrlBase}${REMSAdminWhitelist.discoverySplZipEndpoint}`);
-        
-        const splZipUrl = `${REMSAdminWhitelist.discoveryUrlBase}${REMSAdminWhitelist.discoverySplZipEndpoint}`;
-        const response = await axios.get(splZipUrl, { responseType: 'arraybuffer' });
-        fs.writeFileSync(mainZipPath, response.data);
-        
-        console.log('Main SPL zip downloaded successfully');
-      } else {
-        console.log('Using existing main SPL zip file');
-      }
+      // Always re-download the main zip file to ensure we have the latest data
+      console.log(`Downloading latest SPL zip from ${REMSAdminWhitelist.discoveryUrlBase}${REMSAdminWhitelist.discoverySplZipEndpoint}`);
       
-      if (!mainZipExtracted) {
-        console.log('Extracting main SPL zip file');
-        const mainZip = new AdmZip(mainZipPath);
-        mainZip.extractAllTo(extractPath, true);
-        console.log('Main SPL zip extracted successfully');
-      }
-    } else {
-      console.log('Main SPL zip already exists and is extracted');
-    }
+      const splZipUrl = `${REMSAdminWhitelist.discoveryUrlBase}${REMSAdminWhitelist.discoverySplZipEndpoint}`;
+      const response = await axios.get(splZipUrl, { responseType: 'arraybuffer' });
+      fs.writeFileSync(mainZipPath, response.data);
+      
+      console.log('Latest SPL zip downloaded successfully');
+
+      // Clean extraction directories to ensure fresh data
+      fs.rmSync(extractPath, { recursive: true, force: true });
+      fs.rmSync(innerExtractPath, { recursive: true, force: true });
+      fs.mkdirSync(extractPath, { recursive: true });
+      fs.mkdirSync(innerExtractPath, { recursive: true });
+
+
+      console.log('Extracting latest SPL zip file');
+      const mainZip = new AdmZip(mainZipPath);
+      mainZip.extractAllTo(extractPath, true);
+      console.log('latest SPL zip extracted successfully');
+
     
     // If a specific rems_spl_date is provided, find and process that zip file
     if (rems_spl_date) {
@@ -327,14 +320,11 @@ async function getDrugXmlFromSplZip(rems_spl_date?: string): Promise<any> {
       const zipAlreadyExtracted = fs.existsSync(specificInnerExtractPath)
       
       // Extract the target zip file if needed
-      if (!zipAlreadyExtracted) {
-        console.log(`Extracting inner zip file: ${targetZipFile}`);
-        const targetZip = new AdmZip(targetZipPath);
-        targetZip.extractAllTo(innerExtractPath, true);
-        console.log(`Inner zip file extracted to ${specificInnerExtractPath}`);
-      } else {
-        console.log(`Inner zip file already extracted to ${specificInnerExtractPath}`);
-      }
+      console.log(`Extracting latest inner zip file: ${targetZipFile}`);
+      const targetZip = new AdmZip(targetZipPath);
+      targetZip.extractAllTo(innerExtractPath, true);
+      console.log(`Latest inner zip file extracted to ${specificInnerExtractPath}`);
+
     
       
       if (!fs.existsSync(specificInnerExtractPath)) {
@@ -428,69 +418,88 @@ export async function loadPhonebook() {
   for (const entry of phonebook) {
     try {
       // Check if entry already exists in database
-      const doesExist = await model.exists({ code: entry.code, system: entry.system });
+      const existingEntry = await model.findOne({ code: entry.code, system: entry.system });
+      const doesExist = existingEntry !== null;
+
+      // Create a copy of the entry to modify
+      const entryToSave = { ...entry };
       
-      if (!doesExist) {
-        // Create a copy of the entry to modify
-        const entryToSave = { ...entry };
-        
-        // Handle directory lookup types
-        if (entry.directoryLookupType) {
-          // Case 1: API lookup
-          if (entry.directoryLookupType === 'api') {
-            console.log(`Using API lookup for ${entry.brand_name} (${entry.code})`);
+      // Always process directory lookup regardless of whether entry exists
+      if (entry.directoryLookupType) {
+        // Case 1: API lookup
+        if (entry.directoryLookupType === 'api') {
+          console.log(`Using API lookup for ${entry.brand_name} (${entry.code})`);
+          
+          // Get information from the directory API
+          const apiResult = await getRemsFromDirectoryApi(
+            entry.code
+          );
+          
+          if (apiResult) {
+            // Update entry with API results
+            entryToSave.to = apiResult.rems_endpoint + 'cds-services/rems-';
+            entryToSave.toEtasu = apiResult.rems_endpoint + '4_0_0/GuidanceResponse/$rems-etasu';
+            console.log(`Updated REMS endpoints for ${entry.brand_name} from API`);
+          } else {
+            console.log(`No API results found for ${entry.brand_name}, using default endpoints`);
+            entryToSave.to = REMSAdminWhitelist.standardRemsAdmin;
+            entryToSave.toEtasu = REMSAdminWhitelist.standardRemsAdminEtasu;
+          }
+        } 
+        // Case 2: SPL lookup
+        else if (entry.directoryLookupType === 'spl' && entry.rems_spl_date) {
+          console.log(`Using SPL lookup for ${entry.brand_name} (${entry.code})`);
+          
+          // Get the XML data from the SPL zip
+          const xmlData = await getDrugXmlFromSplZip(entry.rems_spl_date);
+          
+          if (xmlData) {
+            // Extract drug info from the XML
+            const drugInfo = extractDrugInfoFromXml(xmlData, entry.generic_name || entry.brand_name);
             
-            // Get information from the directory API
-            const apiResult = await getRemsFromDirectoryApi(
-              entry.code
-            );
-            
-            if (apiResult) {
-              // Update entry with API results
-              entryToSave.to = apiResult.rems_endpoint + 'cds-services/rems-';
-              entryToSave.toEtasu = apiResult.rems_endpoint + '4_0_0/GuidanceResponse/$rems-etasu';
-              console.log(`Updated REMS endpoints for ${entry.brand_name} from API`);
+            if (drugInfo && drugInfo.remsEndpoint) {
+              entryToSave.to = drugInfo.remsEndpoint + 'cds-services/rems-';
+              entryToSave.toEtasu = drugInfo.remsEndpoint + '4_0_0/GuidanceResponse/$rems-etasu';
+              console.log(`Updated REMS endpoints for ${entry.brand_name} from SPL`);
             } else {
-              console.log(`No API results found for ${entry.brand_name}, using default endpoints`);
+              console.log(`No REMS endpoints found in SPL for ${entry.brand_name}, using default endpoints`);
               entryToSave.to = REMSAdminWhitelist.standardRemsAdmin;
               entryToSave.toEtasu = REMSAdminWhitelist.standardRemsAdminEtasu;
             }
-          } 
-          // Case 2: SPL lookup
-          else if (entry.directoryLookupType === 'spl' && entry.rems_spl_date) {
-            console.log(`Using SPL lookup for ${entry.brand_name} (${entry.code})`);
-            
-            // Get the XML data from the SPL zip
-            const xmlData = await getDrugXmlFromSplZip(entry.rems_spl_date);
-            
-            if (xmlData) {
-              // Extract drug info from the XML
-              const drugInfo = extractDrugInfoFromXml(xmlData, entry.generic_name || entry.brand_name);
-              
-              if (drugInfo && drugInfo.remsEndpoint) {
-                entryToSave.to = drugInfo.remsEndpoint + 'cds-services/rems-';
-                entryToSave.toEtasu = drugInfo.remsEndpoint + '4_0_0/GuidanceResponse/$rems-etasu';
-                console.log(`Updated REMS endpoints for ${entry.brand_name} from SPL`);
-              } else {
-                console.log(`No REMS endpoints found in SPL for ${entry.brand_name}, using default endpoints`);
-                entryToSave.to = REMSAdminWhitelist.standardRemsAdmin;
-                entryToSave.toEtasu = REMSAdminWhitelist.standardRemsAdminEtasu;
-              }
-            } else {
-              console.log(`Failed to get SPL data for ${entry.brand_name}, using default endpoints`);
-              entryToSave.to = REMSAdminWhitelist.standardRemsAdmin;
-              entryToSave.toEtasu = REMSAdminWhitelist.standardRemsAdminEtasu;
-            }
+          } else {
+            console.log(`Failed to get SPL data for ${entry.brand_name}, using default endpoints`);
+            entryToSave.to = REMSAdminWhitelist.standardRemsAdmin;
+            entryToSave.toEtasu = REMSAdminWhitelist.standardRemsAdminEtasu;
           }
         }
+      }
+      
+      if (doesExist) {
+        // Check if there are any changes to the existing entry
+        const hasChanges = existingEntry.to !== entryToSave.to || 
+                           existingEntry.toEtasu !== entryToSave.toEtasu;
         
-        // Save the entry to the database
+        if (hasChanges) {
+          // Update the existing entry with new information
+          await model.updateOne(
+            { code: entry.code, system: entry.system },
+            { 
+              $set: { 
+                to: entryToSave.to, 
+                toEtasu: entryToSave.toEtasu
+              }
+            }
+          );
+          console.log(`Updated existing code ${entry.code} in database with new endpoints`);
+        } else {
+          console.log(`No changes detected for code ${entry.code}, skipping update`);
+        }
+      } else {
+        // Save the new entry to the database
         const resource = new model(entryToSave);
         await resource.save();
         console.log(`Added code ${entry.code} to database`);
-      } else {
-        console.log(`Skipping code ${entry.code} - already in database`);
-      }
+      }    
     } catch (error) {
       console.error(`Error processing entry ${entry.code}:`, error);
     }
