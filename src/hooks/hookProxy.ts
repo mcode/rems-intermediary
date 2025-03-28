@@ -492,7 +492,7 @@ export async function loadPhonebook() {
           );
           console.log(`Updated existing code ${entry.code} in database with new endpoints`);
         } else {
-          console.log(`No changes detected for code ${entry.code}, skipping update`);
+          console.log(`No changes detected for code ${entry.code}, skipping update in database`);
         }
       } else {
         // Save the new entry to the database
