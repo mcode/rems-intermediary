@@ -70,7 +70,7 @@ const phonebook = [
     from: [EHRWhitelist.any]
   },
   {
-    code: '70771-1557-4', // iPLEDGE
+    code: '0245-0571-01', // iPLEDGE
     system: 'http://hl7.org/fhir/sid/ndc',
     brand_name: "Isotretinoin",
     generic_name: "ISOTRETINOIN",
@@ -81,7 +81,7 @@ const phonebook = [
     from: [EHRWhitelist.any]
   },
   {
-    code: '63459-502-01', // TIRF
+    code: '63459-502-30', // TIRF
     system: 'http://hl7.org/fhir/sid/ndc',
     brand_name: "Fentanyl Citrate",
     generic_name: "FENTANYL CITRATE",
@@ -92,7 +92,7 @@ const phonebook = [
     from: [EHRWhitelist.any]
   },
   {
-    code: '65597-407-20', // Turalio
+    code: '65597-402-20', // Turalio
     system: 'http://hl7.org/fhir/sid/ndc',
     brand_name: "Turalio",
     generic_name: "PEXIDARTINIB HYDROCHLORIDE",
