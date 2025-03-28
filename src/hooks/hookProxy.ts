@@ -423,6 +423,8 @@ export async function loadPhonebook() {
 
       // Create a copy of the entry to modify
       const entryToSave = { ...entry };
+
+      console.log(`\n --------------------------------- \n check REMS endpoint info for ${entry.brand_name}`)
       
       // Always process directory lookup regardless of whether entry exists
       if (entry.directoryLookupType) {
