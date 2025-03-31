@@ -249,7 +249,82 @@ function extractDrugInfoFromXml(xmlObj: any, searchDrugName: string): any | null
   }
 }
 
-async function getDrugXmlFromSplZip(rems_spl_date?: string): Promise<any> {
+async function getDrugXmlFromSplZip(rems_spl_date: string): Promise <any> {
+
+  const baseFilePath = join(process.cwd(), 'rems-spl-files');
+  const extractPath = join(baseFilePath, 'extracted');
+  const innerExtractPath = join(baseFilePath, 'inner_extracted');
+
+  try {
+    console.log(`Looking for SPL file with date: ${rems_spl_date}`);
+    
+    // Check in the rems_document_spl_files subdirectory
+    const spl_files_dir = join(extractPath, 'rems_document_spl_files');
+    
+    if (!fs.existsSync(spl_files_dir)) {
+      console.error(`Directory ${spl_files_dir} does not exist`);
+      return null;
+    }
+    
+    const files = fs.readdirSync(spl_files_dir);
+    
+    const targetZipFile = files.find(file => file.startsWith(rems_spl_date));
+    
+    if (!targetZipFile) {
+      console.error(`No SPL file found for rems_spl_date: ${rems_spl_date}`);
+      return null;
+    }
+    
+    const targetZipPath = join(spl_files_dir, targetZipFile);
+    
+    // Check if this specific zip has already been extracted
+    const targetDirName = targetZipFile.replace('.zip', '');
+    const specificInnerExtractPath = join(innerExtractPath, targetDirName);
+        
+    // Extract the target zip file if needed
+    console.log(`Extracting latest inner zip file: ${targetZipFile}`);
+    const targetZip = new AdmZip(targetZipPath);
+    targetZip.extractAllTo(innerExtractPath, true);
+    console.log(`Latest inner zip file extracted to ${specificInnerExtractPath}`);
+
+  
+    
+    if (!fs.existsSync(specificInnerExtractPath)) {
+      console.error(`Expected directory ${specificInnerExtractPath} does not exist`);
+      return null;
+    }
+    
+    // Find the XML file in the nested directory
+    const innerFiles = fs.readdirSync(specificInnerExtractPath);
+    const xmlFile = innerFiles.find(file => file.endsWith('.xml'));
+    
+    if (!xmlFile) {
+      console.error('No XML file found in the extracted SPL file');
+      return null;
+    }
+    
+    // Read and parse the XML file
+    const xmlPath = join(specificInnerExtractPath, xmlFile);
+    const xmlContent = fs.readFileSync(xmlPath, 'utf-8');
+    
+    // Parse XML content using xml2js
+    return new Promise((resolve, reject) => {
+      parseString(xmlContent, (err: any, result: any) => {
+        if (err) {
+          console.error('Error parsing XML:', err);
+          reject(err);
+        } else {
+          resolve(result);
+        }
+      });
+    });
+  } catch (error) {
+    console.error('Error extracting and parsing SPL zip files:', error);
+    return null;
+  }
+}
+
+async function downloadSplZip(): Promise<any> {
   // Create base directories to store and process the zip files
   const baseFilePath = join(process.cwd(), 'rems-spl-files');
   const extractPath = join(baseFilePath, 'extracted');
@@ -289,90 +364,20 @@ async function getDrugXmlFromSplZip(rems_spl_date?: string): Promise<any> {
       mainZip.extractAllTo(extractPath, true);
       console.log('latest SPL zip extracted successfully');
 
-    
-    // If a specific rems_spl_date is provided, find and process that zip file
-    if (rems_spl_date) {
-      console.log(`Looking for SPL file with date: ${rems_spl_date}`);
-      
-      // Check in the rems_document_spl_files subdirectory
-      const spl_files_dir = join(extractPath, 'rems_document_spl_files');
-      
-      if (!fs.existsSync(spl_files_dir)) {
-        console.error(`Directory ${spl_files_dir} does not exist`);
-        return null;
-      }
-      
-      const files = fs.readdirSync(spl_files_dir);
-      
-      const targetZipFile = files.find(file => file.startsWith(rems_spl_date));
-      
-      if (!targetZipFile) {
-        console.error(`No SPL file found for rems_spl_date: ${rems_spl_date}`);
-        return null;
-      }
-      
-      const targetZipPath = join(spl_files_dir, targetZipFile);
-      
-      // Check if this specific zip has already been extracted
-      const targetDirName = targetZipFile.replace('.zip', '');
-      const specificInnerExtractPath = join(innerExtractPath, targetDirName);
-      
-      const zipAlreadyExtracted = fs.existsSync(specificInnerExtractPath)
-      
-      // Extract the target zip file if needed
-      console.log(`Extracting latest inner zip file: ${targetZipFile}`);
-      const targetZip = new AdmZip(targetZipPath);
-      targetZip.extractAllTo(innerExtractPath, true);
-      console.log(`Latest inner zip file extracted to ${specificInnerExtractPath}`);
-
-    
-      
-      if (!fs.existsSync(specificInnerExtractPath)) {
-        console.error(`Expected directory ${specificInnerExtractPath} does not exist`);
-        return null;
-      }
-      
-      // Find the XML file in the nested directory
-      const innerFiles = fs.readdirSync(specificInnerExtractPath);
-      const xmlFile = innerFiles.find(file => file.endsWith('.xml'));
-      
-      if (!xmlFile) {
-        console.error('No XML file found in the extracted SPL file');
-        return null;
-      }
-      
-      // Read and parse the XML file
-      const xmlPath = join(specificInnerExtractPath, xmlFile);
-      const xmlContent = fs.readFileSync(xmlPath, 'utf-8');
-      
-      // Parse XML content using xml2js
-      return new Promise((resolve, reject) => {
-        parseString(xmlContent, (err: any, result: any) => {
-          if (err) {
-            console.error('Error parsing XML:', err);
-            reject(err);
-          } else {
-            resolve(result);
-          }
-        });
-      });
-    } else {
-      // If no specific date is provided, return a list of available dates
-      const spl_files_dir = join(extractPath, 'rems_document_spl_files');
-      if (!fs.existsSync(spl_files_dir)) {
-        console.error(`Directory ${spl_files_dir} does not exist`);
-        return [];
-      }
-      
-      const files = fs.readdirSync(spl_files_dir);
-      return files.map(file => {
-        // Extract date information from filenames
-        const datePart = file.split('_')[0]; // Assuming format is DATE_otherinfo.zip
-        return { date: datePart, filename: file };
-      });
+    const spl_files_dir = join(extractPath, 'rems_document_spl_files');
+    if (!fs.existsSync(spl_files_dir)) {
+      console.error(`Directory ${spl_files_dir} does not exist`);
+      return [];
     }
+    
+    const files = fs.readdirSync(spl_files_dir);
+    return files.map(file => {
+      // Extract date information from filenames
+      const datePart = file.split('_')[0]; // Assuming format is DATE_otherinfo.zip
+      return { date: datePart, filename: file };
+    });
   } catch (error) {
-    console.error('Error processing SPL zip files:', error);
+    console.error('Error downloading SPL zip files:', error);
     return null;
   }
 }
@@ -414,6 +419,8 @@ async function getRemsFromDirectoryApi(ndc_code: string): Promise<MedicationApiR
 
 export async function loadPhonebook() {
   const model = Connection;
+
+  let downloadedSplZip = false;
   
   for (const entry of phonebook) {
     try {
@@ -451,6 +458,11 @@ export async function loadPhonebook() {
         // Case 2: SPL lookup
         else if (entry.directoryLookupType === 'spl' && entry.rems_spl_date) {
           console.log(`Using SPL lookup for ${entry.brand_name} (${entry.code})`);
+
+          if (!downloadedSplZip) {
+            await downloadSplZip();
+            downloadedSplZip = true;
+          }
           
           // Get the XML data from the SPL zip
           const xmlData = await getDrugXmlFromSplZip(entry.rems_spl_date);
