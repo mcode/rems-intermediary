@@ -27,6 +27,7 @@
     "@projecttacoma/node-fhir-server-core": "^2.2.8",
     "@types/fhir": "^0.0.35",
     "@types/glob": "^8.1.0",
+    "adm-zip": "^0.5.16",
     "axios": "^1.2.1",
     "body-parser": "^1.19.0",
     "conventional-changelog-cli": "^2.0.34",
@@ -46,9 +47,11 @@
     "uid": "^2.0.1",
     "uuid": "^9.0.0",
     "winston": "^3.2.1",
-    "winston-daily-rotate-file": "^4.2.1"
+    "winston-daily-rotate-file": "^4.2.1",
+    "xml2js": "^0.6.2"
   },
   "devDependencies": {
+    "@types/adm-zip": "^0.5.7",
     "@types/chai": "^4.3.4",
     "@types/cookie-parser": "^1.4.7",
     "@types/cors": "^2.8.12",
@@ -63,6 +66,7 @@
     "@types/nodemon": "^1.19.2",
     "@types/sinon": "10.0.13",
     "@types/uuid": "^9.0.0",
+    "@types/xml2js": "^0.4.14",
     "@typescript-eslint/eslint-plugin": "^5.45.0",
     "@typescript-eslint/parser": "^5.45.0",
     "axios-mock-adapter": "^1.21.2",
