@@ -338,7 +338,7 @@ async function updateEntryWithApiResults(entry: any): Promise<any> {
   return entryToSave;
 }
 
-async function updateEntryWithSplResults(entry: any, downloadedSplZip: boolean): Promise<{ entry: any, downloadSuccess: boolean }> {
+async function updateEntryWithSplResults(entry: any, downloadedSplZip: boolean): Promise<any> {
   console.log(`Using SPL lookup for ${entry.brand_name} (${entry.code})`);
   let localDownloadedSplZip = downloadedSplZip;
   const entryToSave = { ...entry };
@@ -368,7 +368,7 @@ async function updateEntryWithSplResults(entry: any, downloadedSplZip: boolean):
     entryToSave.toEtasu = REMSAdminWhitelist.standardRemsAdminEtasu;
   }
   
-  return { entry: entryToSave, downloadSuccess: localDownloadedSplZip };
+  return entryToSave
 }
 
 async function saveOrUpdateEntry(entryToSave: any, existingEntry: any, model: any): Promise<void> {
@@ -605,9 +605,7 @@ export async function loadPhonebook() {
         }
         // Case 2: SPL lookup
         else if (entry.directoryLookupType === 'spl' && entry.rems_spl_date) {
-          const result = await updateEntryWithSplResults(entry, downloadedSplZip);
-          entryToSave = result.entry;
-          downloadedSplZip = result.downloadSuccess;
+          entryToSave = await updateEntryWithSplResults(entry, downloadedSplZip);
         }
       }
       await saveOrUpdateEntry(entryToSave, existingEntry, model);   
