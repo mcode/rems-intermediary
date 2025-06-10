@@ -22,6 +22,14 @@ interface MedicationApiResponse {
   rems_modification_date: string;
 }
 
+interface DrugInfo {
+  brandName: string;
+  genericName: string;
+  remsEndpoint?: string;
+  productNdc?: string;
+  approvalId?: string;
+}
+
 const REMSAdminWhitelist = {
   standardRemsAdmin: config?.general?.remsAdminHookPath,
   standardRemsAdminEtasu: config?.general?.remsAdminFhirEtasuPath,
@@ -37,8 +45,6 @@ const phonebook = [
     system: 'http://www.nlm.nih.gov/research/umls/rxnorm',
     brand_name: "Isotretinoin",
     generic_name: "ISOTRETINOIN",
-    to: REMSAdminWhitelist.standardRemsAdmin,
-    toEtasu: REMSAdminWhitelist.standardRemsAdminEtasu,
     from: [EHRWhitelist.any]
   },
   {
@@ -46,8 +52,6 @@ const phonebook = [
     system: 'http://www.nlm.nih.gov/research/umls/rxnorm',
     brand_name: "Fentanyl Citrate",
     generic_name: "FENTANYL CITRATE",
-    to: REMSAdminWhitelist.standardRemsAdmin,
-    toEtasu: REMSAdminWhitelist.standardRemsAdminEtasu,
     from: [EHRWhitelist.any]
   },
   {
@@ -55,8 +59,6 @@ const phonebook = [
     system: 'http://www.nlm.nih.gov/research/umls/rxnorm',
     brand_name: "Turalio",
     generic_name: "PEXIDARTINIB HYDROCHLORIDE",
-    to: REMSAdminWhitelist.standardRemsAdmin,
-    toEtasu: REMSAdminWhitelist.standardRemsAdminEtasu,
     from: [EHRWhitelist.any]
   },
   {
@@ -64,8 +66,6 @@ const phonebook = [
     system: 'http://www.nlm.nih.gov/research/umls/rxnorm',
     brand_name: "ADDYI",
     generic_name: "FLIBANSERINE",
-    to: REMSAdminWhitelist.standardRemsAdmin,
-    toEtasu: REMSAdminWhitelist.standardRemsAdminEtasu,
     from: [EHRWhitelist.any]
   },
   {
@@ -73,10 +73,6 @@ const phonebook = [
     system: 'http://hl7.org/fhir/sid/ndc',
     brand_name: "Isotretinoin",
     generic_name: "ISOTRETINOIN",
-    // to: REMSAdminWhitelist.standardRemsAdmin,
-    // toEtasu: REMSAdminWhitelist.standardRemsAdminEtasu,
-    directoryLookupType: 'spl',
-    rems_spl_date: "20230912",
     from: [EHRWhitelist.any]
   },
   {
@@ -84,10 +80,6 @@ const phonebook = [
     system: 'http://hl7.org/fhir/sid/ndc',
     brand_name: "Fentanyl Citrate",
     generic_name: "FENTANYL CITRATE",
-    // to: REMSAdminWhitelist.standardRemsAdmin,
-    // toEtasu: REMSAdminWhitelist.standardRemsAdminEtasu,
-    directoryLookupType: 'spl',
-    rems_spl_date: "20230401",
     from: [EHRWhitelist.any]
   },
   {
@@ -95,9 +87,6 @@ const phonebook = [
     system: 'http://hl7.org/fhir/sid/ndc',
     brand_name: "Turalio",
     generic_name: "PEXIDARTINIB HYDROCHLORIDE",
-    // to: REMSAdminWhitelist.standardRemsAdmin,
-    // toEtasu: REMSAdminWhitelist.standardRemsAdminEtasu,
-    directoryLookupType: 'api',
     from: [EHRWhitelist.any]
   },
   {
@@ -105,9 +94,6 @@ const phonebook = [
     system: 'http://hl7.org/fhir/sid/ndc',
     brand_name: "ADDYI",
     generic_name: "FLIBANSERINE",
-    // to: REMSAdminWhitelist.standardRemsAdmin,
-    // toEtasu: REMSAdminWhitelist.standardRemsAdminEtasu,
-    directoryLookupType: 'api',
     from: [EHRWhitelist.any]
   }
 ];
@@ -146,7 +132,18 @@ function getDrugNames(product: any): { brandName: string, genericName: string } 
       return null;
     }
     
-    const brandName = product.name[0];
+    let brandName: string;
+    if (typeof product.name[0] === 'string') {
+      brandName = product.name[0].trim();
+    } else if (typeof product.name[0] === 'object' && product.name[0]._) {
+      brandName = product.name[0]._.trim();
+      if (product.name[0].suffix && Array.isArray(product.name[0].suffix)) {
+        brandName += ' ' + product.name[0].suffix.join(' ');
+      }
+    } else {
+      return null;
+    }
+    
     let genericName = brandName;
     
     if (product.asEntityWithGeneric && 
@@ -154,7 +151,16 @@ function getDrugNames(product: any): { brandName: string, genericName: string } 
         product.asEntityWithGeneric[0].genericMedicine && 
         product.asEntityWithGeneric[0].genericMedicine[0] && 
         product.asEntityWithGeneric[0].genericMedicine[0].name) {
-      genericName = product.asEntityWithGeneric[0].genericMedicine[0].name[0];
+      
+      const genericNameRaw = product.asEntityWithGeneric[0].genericMedicine[0].name[0];
+      if (typeof genericNameRaw === 'string') {
+        genericName = genericNameRaw.trim();
+      } else if (typeof genericNameRaw === 'object' && genericNameRaw._) {
+        genericName = genericNameRaw._.trim();
+        if (genericNameRaw.suffix && Array.isArray(genericNameRaw.suffix)) {
+          genericName += ' ' + genericNameRaw.suffix.join(' ');
+        }
+      }
     }
     
     return { brandName, genericName };
@@ -193,6 +199,49 @@ function extractRemsEndpoint(subjectOf: any[]): string | null {
     return null;
   }
 
+function extractProductNdc(subject: any): string | null {
+  if (subject.manufacturedProduct && 
+      subject.manufacturedProduct[0] && 
+      subject.manufacturedProduct[0].subjectOf) {
+    
+    for (const subjectOfItem of subject.manufacturedProduct[0].subjectOf) {
+      if (subjectOfItem.approval && 
+          subjectOfItem.approval[0] && 
+          subjectOfItem.approval[0].id && 
+          subjectOfItem.approval[0].id[0] && 
+          subjectOfItem.approval[0].id[0].$) {
+        
+        const extension = subjectOfItem.approval[0].id[0].$.extension;
+        if (extension && (extension.startsWith('NDA') || extension.startsWith('ANDA'))) {
+          // ToDo: Map Approval code to NDC code
+          // For now return null and force api check via brand/generic name
+          return null;
+        }
+      }
+    }
+  }
+  
+  return null;
+}
+
+function findRxNormCodeFromPhonebook(brandName: string, genericName: string): { code: string; system: string } | null {
+  const match = phonebook.find(entry => 
+    entry.brand_name.toLowerCase() === brandName.toLowerCase() ||
+    entry.generic_name.toLowerCase() === genericName.toLowerCase() ||
+    entry.brand_name.toLowerCase() === genericName.toLowerCase() ||
+    entry.generic_name.toLowerCase() === brandName.toLowerCase()
+  );
+  
+  if (match) {
+    return {
+      code: match.code,
+      system: match.system
+    };
+  }
+  
+  return null;
+}
+
 function getTargetZipPath(rems_spl_date: string, spl_files_dir: string): string | null {
   if (!fs.existsSync(spl_files_dir)) {
     console.error(`Directory ${spl_files_dir} does not exist`);
@@ -210,16 +259,28 @@ function getTargetZipPath(rems_spl_date: string, spl_files_dir: string): string 
   return join(spl_files_dir, targetZipFile);
 }
 
+function getAllSplZipPaths(spl_files_dir: string): string[] {
+  if (!fs.existsSync(spl_files_dir)) {
+    console.error(`Directory ${spl_files_dir} does not exist`);
+    return [];
+  }
+  
+  const files = fs.readdirSync(spl_files_dir);
+  return files
+    .filter((file: string) => file.endsWith('.zip'))
+    .map((file: string) => join(spl_files_dir, file));
+}
+
 function extractInnerZip(zipPath: string, innerExtractPath: string): string | null {
   try {
     const targetZipFile = path.basename(zipPath);
     const targetDirName = targetZipFile.replace('.zip', '');
     const specificInnerExtractPath = join(innerExtractPath, targetDirName);
     
-    console.log(`Extracting latest inner zip file: ${targetZipFile}`);
+    console.log(`Extracting inner zip file: ${targetZipFile}`);
     const targetZip = new AdmZip(zipPath);
     targetZip.extractAllTo(innerExtractPath, true);
-    console.log(`Latest inner zip file extracted to ${specificInnerExtractPath}`);
+    console.log(`Inner zip file extracted to ${specificInnerExtractPath}`);
     
     return specificInnerExtractPath;
   } catch (error) {
@@ -319,59 +380,9 @@ function getSplFileList(splFilesDir: string): any[] {
   });
 }
 
-async function updateEntryWithApiResults(entry: any): Promise<any> {
-  console.log(`Using API lookup for ${entry.brand_name} (${entry.code})`);
+async function saveOrUpdateEntry(entryToSave: any, model: any): Promise<void> {
+  const existingEntry = await model.findOne({ code: entryToSave.code, system: entryToSave.system });
   
-  const apiResult = await getRemsFromDirectoryApi(entry.code);
-  const entryToSave = { ...entry };
-  
-  if (apiResult) {
-    entryToSave.to = apiResult.rems_endpoint + 'cds-services/rems-';
-    entryToSave.toEtasu = apiResult.rems_endpoint + '4_0_0/GuidanceResponse/$rems-etasu';
-    console.log(`Updated REMS endpoints for ${entry.brand_name} from API`);
-  } else {
-    console.log(`No API results found for ${entry.brand_name}, using default endpoints`);
-    entryToSave.to = REMSAdminWhitelist.standardRemsAdmin;
-    entryToSave.toEtasu = REMSAdminWhitelist.standardRemsAdminEtasu;
-  }
-  
-  return entryToSave;
-}
-
-async function updateEntryWithSplResults(entry: any, downloadedSplZip: boolean): Promise<any> {
-  console.log(`Using SPL lookup for ${entry.brand_name} (${entry.code})`);
-  let localDownloadedSplZip = downloadedSplZip;
-  const entryToSave = { ...entry };
-  
-  if (!localDownloadedSplZip) {
-    await downloadSplZip();
-    localDownloadedSplZip = true;
-  }
-  
-  const xmlData = await getDrugXmlFromSplZip(entry.rems_spl_date);
-  
-  if (xmlData) {
-    const drugInfo = extractDrugInfoFromXml(xmlData, entry.generic_name || entry.brand_name);
-    
-    if (drugInfo && drugInfo.remsEndpoint) {
-      entryToSave.to = drugInfo.remsEndpoint + 'cds-services/rems-';
-      entryToSave.toEtasu = drugInfo.remsEndpoint + '4_0_0/GuidanceResponse/$rems-etasu';
-      console.log(`Updated REMS endpoints for ${entry.brand_name} from SPL`);
-    } else {
-      console.log(`No REMS endpoints found in SPL for ${entry.brand_name}, using default endpoints`);
-      entryToSave.to = REMSAdminWhitelist.standardRemsAdmin;
-      entryToSave.toEtasu = REMSAdminWhitelist.standardRemsAdminEtasu;
-    }
-  } else {
-    console.log(`Failed to get SPL data for ${entry.brand_name}, using default endpoints`);
-    entryToSave.to = REMSAdminWhitelist.standardRemsAdmin;
-    entryToSave.toEtasu = REMSAdminWhitelist.standardRemsAdminEtasu;
-  }
-  
-  return entryToSave
-}
-
-async function saveOrUpdateEntry(entryToSave: any, existingEntry: any, model: any): Promise<void> {
   if (existingEntry) {
     const hasChanges = existingEntry.to !== entryToSave.to || 
                        existingEntry.toEtasu !== entryToSave.toEtasu;
@@ -397,28 +408,24 @@ async function saveOrUpdateEntry(entryToSave: any, existingEntry: any, model: an
   }
 }
 
-function extractDrugInfoFromXml(xmlObj: any, searchDrugName: string): any | null {
+function extractAllDrugsFromXml(xmlObj: any): DrugInfo[] {
   try {
-
     if (!validateXmlStructure(xmlObj)) {
-      return null;
+      return [];
     }
 
-    console.log(`Searching for drug ${searchDrugName} in XML document`);
-
+    console.log('Extracting all drugs from XML document');
 
     const components = xmlObj.document.component[0].structuredBody[0].component;
-
     const productSection = findProductSection(components);
-
 
     if (!productSection || !productSection.section || !productSection.section[0].subject) {
       console.error('No product data elements section found in XML');
-      return null;
+      return [];
     }
 
-    // Loop through all subjects (manufactured products) to find our target drug
     const subjects = productSection.section[0].subject;
+    const drugs: DrugInfo[] = [];
 
     for (const subject of subjects) {
       if (subject.manufacturedProduct &&
@@ -426,93 +433,242 @@ function extractDrugInfoFromXml(xmlObj: any, searchDrugName: string): any | null
         subject.manufacturedProduct[0].manufacturedProduct) {
 
         const product = subject.manufacturedProduct[0].manufacturedProduct[0];
-
         const drugNames = getDrugNames(product);
+        
         if (!drugNames) continue;
+
         const { brandName, genericName } = drugNames;
+        const productNdc = extractProductNdc(subject);
 
+        let remsEndpoint: string | null = null;
+        if (subject.manufacturedProduct[0].subjectOf) {
+          remsEndpoint = extractRemsEndpoint(subject.manufacturedProduct[0].subjectOf);
+        }
 
-        // Check if this is the drug we're looking for
-        const brandNameMatch = brandName.toUpperCase() === searchDrugName.toUpperCase();
-        const genericNameMatch = genericName.toUpperCase() === searchDrugName.toUpperCase();
+        const drugInfo: DrugInfo = {
+          brandName,
+          genericName,
+          remsEndpoint: remsEndpoint || undefined,
+          productNdc: productNdc || undefined
+        };
 
-        if (brandNameMatch || genericNameMatch) {
-          console.log(`Found matching drug: ${brandName} / ${genericName}`);
-
-          // // Look for REMS API endpoint in subjectOf section
-          if (subject.manufacturedProduct[0].subjectOf) {
-            const remsEndpoint = extractRemsEndpoint(subject.manufacturedProduct[0].subjectOf);
-
-            // Create the return object with drug info and endpoints
-            if (remsEndpoint) {
-              const drugInfo = {
-                brandName: brandName,
-                genericName: genericName,
-                remsEndpoint: remsEndpoint,
-              };
-
-              console.log(`Found REMS endpoint for ${brandName}: ${remsEndpoint}`);
-              return drugInfo;
-            }
-          }
-          // Found the drug but no REMS endpoint
-          console.log(`Found drug ${brandName} but no REMS endpoint in XML`);
-          return {
-            brandName: brandName,
-            genericName: genericName,
-            remsEndpoint: null,
-            etasuEndpoint: null
-          };
+        drugs.push(drugInfo);
+        
+        if (remsEndpoint) {
+          console.log(`Found drug with REMS endpoint: ${brandName} -> ${remsEndpoint}`);
+        } else {
+          console.log(`Found drug without REMS endpoint: ${brandName}`);
         }
       }
     }
-    console.log(`Drug ${searchDrugName} not found in XML`);
-    return null;
+
+    console.log(`Extracted ${drugs.length} drugs from XML`);
+    return drugs;
   } catch (error) {
-    console.error('Error extracting drug info from XML:', error);
-    return null;
+    console.error('Error extracting drugs from XML:', error);
+    return [];
   }
 }
 
-async function getDrugXmlFromSplZip(rems_spl_date: string): Promise<any> {
-
+async function processAllSplFiles(): Promise<{ drugs: any[], stats: { splEndpoint: number, splApiEndpoint: number} }> {
   const baseFilePath = join(process.cwd(), 'rems-spl-files');
   const extractPath = join(baseFilePath, 'extracted');
   const innerExtractPath = join(baseFilePath, 'inner_extracted');
 
   try {
-    console.log(`Looking for SPL file with date: ${rems_spl_date}`);
+    console.log('Processing all SPL files...');
 
-    // Check in the rems_document_spl_files subdirectory
     const spl_files_dir = join(extractPath, 'rems_document_spl_files');
-    const targetZipPath = getTargetZipPath(rems_spl_date, spl_files_dir);
+    const allZipPaths = getAllSplZipPaths(spl_files_dir);
 
-    if (!targetZipPath) {
-      return null;
+    const allValidDrugs: any[] = [];
+    let splEndpointCount = 0;
+    let splApiEndpointCount = 0;
+
+    for (const zipPath of allZipPaths) {
+      console.log(`\n--- Processing SPL file: ${path.basename(zipPath)} ---`);
+      
+      const specificInnerExtractPath = extractInnerZip(zipPath, innerExtractPath);
+      if (!specificInnerExtractPath) continue;
+
+      const xmlPath = findXmlFile(specificInnerExtractPath);
+      if (!xmlPath) continue;
+
+      const xmlData = await parseXmlContent(xmlPath);
+      if (!xmlData) continue;
+
+      const drugs = extractAllDrugsFromXml(xmlData);
+
+      for (const drug of drugs) {
+        let validDrug: any = null;
+
+        if (drug.remsEndpoint) {
+          console.log(`SPL drug with endpoint: ${drug.brandName}`);
+          validDrug = createDrugEntry(drug, drug.remsEndpoint);
+          if (validDrug) {
+            splEndpointCount++;
+          }
+        } else {
+          console.log(`Trying API lookup for SPL drug: ${drug.brandName}`);
+          
+          const apiResult = await tryApiLookupForDrug(drug);
+          
+          if (apiResult) {
+            console.log(`Found API endpoint for SPL drug: ${drug.brandName}`);
+            validDrug = createDrugEntry(drug, apiResult.rems_endpoint, apiResult.product_ndc);
+            if (validDrug) {
+              splApiEndpointCount++;
+            } 
+          } else {
+            // console.log(`No API endpoint found for SPL drug: ${drug.brandName}`);
+          }
+        }
+
+        if (validDrug) {
+          allValidDrugs.push(validDrug);
+        }
+      }
     }
 
-    // Check if this specific zip has already been extracted
-    const specificInnerExtractPath = extractInnerZip(targetZipPath, innerExtractPath);
-
-    if (!specificInnerExtractPath) {
-      return null;
-    }
-
-    // Find the XML file in the nested directory
-
-    const xmlPath = findXmlFile(specificInnerExtractPath);
-    
-    if (!xmlPath) {
-      return null;
-    }
-    
-    // Read and parse the XML file
-    return await parseXmlContent(xmlPath);
-
+    console.log(`\nTotal valid drugs found in SPL files: ${allValidDrugs.length}`);
+    return {
+      drugs: allValidDrugs,
+      stats: {
+        splEndpoint: splEndpointCount,
+        splApiEndpoint: splApiEndpointCount,
+      }
+    };
   } catch (error) {
-    console.error('Error extracting and parsing SPL zip files:', error);
-    return null;
+    console.error('Error processing SPL files:', error);
+    return {
+      drugs: [],
+      stats: {
+        splEndpoint: 0,
+        splApiEndpoint: 0,
+      }
+    };
   }
+}
+async function tryApiLookupForDrug(drug: DrugInfo): Promise<MedicationApiResponse | null> {
+  const searchStrategies = [
+    { key: 'product_ndc', value: drug.productNdc },
+    { key: 'brand_name', value: drug.brandName },
+    { key: 'generic_name', value: drug.genericName }
+  ];
+
+  for (const strategy of searchStrategies) {
+    if (!strategy.value) continue;
+    
+    try {
+      const result = await getRemsFromDirectoryApi(strategy.value, strategy.key);
+      if (result) {
+        return result;
+      }
+    } catch (error: any) {
+      if (error.response?.status !== 404) {
+        console.error(`API lookup failed for ${strategy.key}=${strategy.value}:`, error.message);
+      }
+    }
+  }
+
+  return null;
+}
+
+function createDrugEntry(drug: DrugInfo, remsEndpoint: string, apiNdc?: string): any | null {
+  let code: string;
+  let system: string;
+  
+  if (drug.productNdc) {
+    code = drug.productNdc;
+    system = 'http://hl7.org/fhir/sid/ndc';
+    console.log(`Using SPL NDC code: ${code} for drug: ${drug.brandName}`);
+  } else if (apiNdc) {
+    code = apiNdc;
+    system = 'http://hl7.org/fhir/sid/ndc';
+    console.log(`Using API NDC code: ${code} for drug: ${drug.brandName}`);
+  } else {
+    const rxNormMatch = findRxNormCodeFromPhonebook(drug.brandName, drug.genericName);
+    if (rxNormMatch) {
+      code = rxNormMatch.code;
+      system = rxNormMatch.system;
+      console.log(`Using RxNorm code from phonebook: ${code} for drug: ${drug.brandName}`);
+    } else {
+      console.log(`No valid code found for drug: ${drug.brandName}, skipping registration`);
+      return null;
+    }
+  }
+
+  return {
+    code: code,
+    system: system,
+    brand_name: drug.brandName,
+    generic_name: drug.genericName,
+    to: remsEndpoint + 'cds-services/rems-',
+    toEtasu: remsEndpoint + '4_0_0/GuidanceResponse/$rems-etasu',
+    from: [EHRWhitelist.any]
+  };
+}
+
+async function processPhonebookEntries(splDrugs: any[]): Promise<{ drugs: any[], stats: { phonebookApi: number, phonebookDefault: number } }> {
+  console.log('\n--- Processing phonebook entries ---');
+  const validPhonebookDrugs: any[] = [];
+  let phonebookApiCount = 0;
+  let phonebookDefaultCount = 0;
+
+  const splDrugNames = new Set<string>();
+  splDrugs.forEach(drug => {
+    if (drug.brand_name && typeof drug.brand_name === 'string') {
+      splDrugNames.add(drug.brand_name.toLowerCase());
+    }
+    if (drug.generic_name && typeof drug.generic_name === 'string') {
+      splDrugNames.add(drug.generic_name.toLowerCase());
+    }
+  });
+
+  for (const entry of phonebook) {
+    try {
+      console.log(`Processing phonebook entry: ${entry.brand_name} (${entry.code})`);
+      
+      const brandInSpl = splDrugNames.has(entry.brand_name.toLowerCase());
+      const genericInSpl = splDrugNames.has(entry.generic_name.toLowerCase());
+      
+      if (brandInSpl || genericInSpl) {
+        console.log(`Skipping phonebook entry for ${entry.brand_name} - already found in SPL`);
+        continue;
+      }
+      
+      const apiResult = await getRemsFromDirectoryApi(entry.code);
+      
+      let entryToSave = { ...entry } as any;
+      
+      if (apiResult) {
+        entryToSave.to = apiResult.rems_endpoint + 'cds-services/rems-';
+        entryToSave.toEtasu = apiResult.rems_endpoint + '4_0_0/GuidanceResponse/$rems-etasu';
+        
+        console.log(`Found API endpoint for phonebook drug: ${entry.brand_name}`);
+        phonebookApiCount++;
+      } else {
+        // Use environment defaults only for phonebook entries
+        entryToSave.to = REMSAdminWhitelist.standardRemsAdmin;
+        entryToSave.toEtasu = REMSAdminWhitelist.standardRemsAdminEtasu;
+        console.log(`Using default endpoints for phonebook drug: ${entry.brand_name}`);
+        phonebookDefaultCount++;
+      }
+      
+      validPhonebookDrugs.push(entryToSave);
+    } catch (error) {
+      console.error(`Error processing phonebook entry ${entry.code}:`, error);
+    }
+  }
+
+  console.log(`Total valid phonebook drugs: ${validPhonebookDrugs.length}`);
+  return {
+    drugs: validPhonebookDrugs,
+    stats: {
+      phonebookApi: phonebookApiCount,
+      phonebookDefault: phonebookDefaultCount
+    }
+  };
 }
 
 async function downloadSplZip(): Promise<any> {
@@ -534,7 +690,6 @@ async function downloadSplZip(): Promise<any> {
     // Clean extraction directories to ensure fresh data
     cleanDirectories([extractPath, innerExtractPath]);
 
-
     // Extract the main zip
     const extractSuccess = extractZip(mainZipPath, extractPath);
     if (!extractSuccess) return null;
@@ -547,18 +702,11 @@ async function downloadSplZip(): Promise<any> {
   }
 }
 
-// Function to get drug info via the directory service API
-export async function getRemsFromDirectoryApi(ndc_code: string): Promise<MedicationApiResponse | null> {
+export async function getRemsFromDirectoryApi(searchValue: string, searchKey: string = 'product_ndc'): Promise<MedicationApiResponse | null> {
   try {
-    let searchKey;
-    let searchValue;
-
-    if (!ndc_code) {
-      return null
+    if (!searchValue) {
+      return null;
     }
-
-    searchKey = "product_ndc"
-    searchValue = ndc_code
 
     // Call the directory service API
     const apiUrl = `${REMSAdminWhitelist.discoveryUrlBase}${REMSAdminWhitelist.discoveryApiEndpoint}?search=${searchKey}="${searchValue}"`;
@@ -568,50 +716,63 @@ export async function getRemsFromDirectoryApi(ndc_code: string): Promise<Medicat
 
     if (response.status === 200 && response.data.results && response.data.results.length > 0) {
       const medication: MedicationApiResponse = response.data.results[0];
-
       console.log(`Found ${searchKey} ${searchValue} info from API:`, medication);
       return medication;
     } else {
       console.log(`${searchKey} ${searchValue} not found in API`);
       return null;
     }
-  } catch (error) {
-    console.error('Error fetching from directory API:', error);
+  } catch (error: any) {
+    if (error.response?.status === 404) {
+      console.log(`${searchKey} ${searchValue} not found in API`);
+    } else {
+      console.error('Error fetching from directory API:', error.message);
+    }
     return null;
   }
 }
 
-
 export async function loadPhonebook() {
   const model = Connection;
 
-  let downloadedSplZip = false;
+  try {
+    console.log('\n========================================');
+    console.log('Starting drug registration process...');
+    console.log('========================================');
 
-  for (const entry of phonebook) {
-    try {
-      // Check if entry already exists in database
-      const existingEntry = await model.findOne({ code: entry.code, system: entry.system });
+    // Step 1: Download and prepare SPL files
+    console.log('\nStep 1: Downloading SPL files...');
+    await downloadSplZip();
 
-      // Create a copy of the entry to modify
-      let entryToSave = { ...entry };
+    // Step 2: Process all SPL files
+    console.log('\nStep 2: Processing all SPL files...');
+    const splResult = await processAllSplFiles();
 
-      console.log(`\n --------------------------------- \n check REMS endpoint info for ${entry.brand_name}`)
+    // Step 3: Process phonebook entries
+    console.log('\nStep 3: Processing phonebook entries...');
+    const phonebookResult = await processPhonebookEntries(splResult.drugs);
 
-      // Always process directory lookup regardless of whether entry exists
-      if (entry.directoryLookupType) {
-        // Case 1: API lookup
-        if (entry.directoryLookupType === 'api') {
-          entryToSave = await updateEntryWithApiResults(entry);
-        }
-        // Case 2: SPL lookup
-        else if (entry.directoryLookupType === 'spl' && entry.rems_spl_date) {
-          entryToSave = await updateEntryWithSplResults(entry, downloadedSplZip);
-        }
-      }
-      await saveOrUpdateEntry(entryToSave, existingEntry, model);   
-    } catch (error) {
-      console.error(`Error processing entry ${entry.code}:`, error);
+    // Step 4: Save all valid drugs to database
+    console.log('\nStep 4: Saving drugs to database...');
+    const allValidDrugs = [...splResult.drugs, ...phonebookResult.drugs];
+    
+    for (const drug of allValidDrugs) {
+      await saveOrUpdateEntry(drug, model);
     }
+
+    console.log('\n========================================');
+    console.log(`Drug registration completed successfully!`);
+    console.log(`Total drugs registered: ${allValidDrugs.length}`);
+    console.log('');
+    console.log('Registration breakdown:');
+    console.log(`  SPL drugs with endpoints in files: ${splResult.stats.splEndpoint}`);
+    console.log(`  SPL drugs found via API fallback: ${splResult.stats.splApiEndpoint}`);
+    console.log(`  Phonebook drugs found via API: ${phonebookResult.stats.phonebookApi}`);
+    console.log(`  Phonebook drugs using defaults: ${phonebookResult.stats.phonebookDefault}`);
+    console.log('========================================');
+
+  } catch (error) {
+    console.error('Error in loadPhonebook:', error);
   }
 }
 
