@@ -83,14 +83,14 @@ const phonebook = [
     from: [EHRWhitelist.any]
   },
   {
-    code: '65597-402-20', // Turalio
+    code: '65597-407-20', // Turalio
     system: 'http://hl7.org/fhir/sid/ndc',
     brand_name: "Turalio",
     generic_name: "PEXIDARTINIB HYDROCHLORIDE",
     from: [EHRWhitelist.any]
   },
   {
-    code: '58604-214', // Addyi
+    code: '58604-214-30', // Addyi
     system: 'http://hl7.org/fhir/sid/ndc',
     brand_name: "ADDYI",
     generic_name: "FLIBANSERINE",
