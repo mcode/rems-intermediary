@@ -17,7 +17,8 @@ interface MedicationApiResponse {
   generic_name: string;
   product_ndc: string;
   rems_administrator: string;
-  rems_endpoint: string;
+  rems_cds_endpoint: string;
+  rems_fhir_base_url: string;
   rems_approval_date: string;
   rems_modification_date: string;
 }
@@ -25,7 +26,8 @@ interface MedicationApiResponse {
 interface DrugInfo {
   brandName: string;
   genericName: string;
-  remsEndpoint?: string;
+  remsCdsEndpoint?: string;
+  remsFhirBaseUrl?: string;
   productNdc?: string;
   approvalId?: string;
 }
@@ -166,38 +168,55 @@ function getDrugNames(product: any): { brandName: string, genericName: string } 
     return { brandName, genericName };
   }
 
-function extractRemsEndpoint(subjectOf: any[]): string | null {
-    for (const item of subjectOf) {
-      if (item.document && 
-          item.document[0] && 
-          item.document[0].title && 
-          item.document[0].title[0] && 
-          item.document[0].title[0].includes('REMS API') && 
-          item.document[0].text && 
-          item.document[0].text[0] && 
-          item.document[0].text[0].reference) {
-        
-        const referenceValue = item.document[0].text[0].reference[0];
-        let remsUrl;
-        
-        if (typeof referenceValue === 'string') {
-          remsUrl = referenceValue;
-        } else if (referenceValue.$ && referenceValue.$.value) {
-          remsUrl = referenceValue.$.value;
+function extractRemsEndpoints(subjectOf: any[]): { cdsEndpoint: string | null, fhirBaseUrl: string | null } {
+  let cdsEndpoint: string | null = null;
+  let fhirBaseUrl: string | null = null;
+
+  for (const item of subjectOf) {
+    if (item.document && 
+        item.document[0] && 
+        item.document[0].title && 
+        item.document[0].title[0] && 
+        item.document[0].text && 
+        item.document[0].text[0] && 
+        item.document[0].text[0].reference) {
+      
+      const title = item.document[0].title[0];
+      const referenceValue = item.document[0].text[0].reference[0];
+      let remsUrl;
+      
+      if (typeof referenceValue === 'string') {
+        remsUrl = referenceValue;
+      } else if (referenceValue.$ && referenceValue.$.value) {
+        remsUrl = referenceValue.$.value;
+      }
+      
+      if (remsUrl) {
+        // Check for CDS hooks discovery endpoint
+        if (title.includes('CDS Hooks Discovery') || title.includes('CDS Services')) {
+          if (remsUrl.includes(':rems_cds_discovery:')) {
+            cdsEndpoint = remsUrl.split(':rems_cds_discovery:')[1];
+          } else if (remsUrl.includes(':rems_discovery:')) {
+            cdsEndpoint = remsUrl.split(':rems_discovery:')[1];
+          } else {
+            cdsEndpoint = remsUrl;
+          }
         }
         
-        if (remsUrl) {
-          if (remsUrl.includes(':rems_discovery:')) {
-            return remsUrl.split(':rems_discovery:')[1];
+        // Check for FHIR base URL
+        if (title.includes('FHIR Base URL') || title.includes('FHIR Server')) {
+          if (remsUrl.includes(':rems_fhir_base:')) {
+            fhirBaseUrl = remsUrl.split(':rems_fhir_base:')[1];
           } else {
-            return remsUrl;
+            fhirBaseUrl = remsUrl;
           }
         }
       }
     }
-    
-    return null;
   }
+  
+  return { cdsEndpoint, fhirBaseUrl };
+}
 
 function extractProductNdc(subject: any): string | null {
   if (subject.manufacturedProduct && 
@@ -277,10 +296,8 @@ function extractInnerZip(zipPath: string, innerExtractPath: string): string | nu
     const targetDirName = targetZipFile.replace('.zip', '');
     const specificInnerExtractPath = join(innerExtractPath, targetDirName);
     
-    console.log(`Extracting inner zip file: ${targetZipFile}`);
     const targetZip = new AdmZip(zipPath);
     targetZip.extractAllTo(innerExtractPath, true);
-    console.log(`Inner zip file extracted to ${specificInnerExtractPath}`);
     
     return specificInnerExtractPath;
   } catch (error) {
@@ -343,10 +360,9 @@ function cleanDirectories(paths: string[]): void {
 
 async function fetchAndSaveZip(url: string, savePath: string): Promise<boolean> {
   try {
-    console.log(`Downloading latest SPL zip from ${url}`);
+    console.log('Downloading latest SPL zip...');
     const response = await axios.get(url, { responseType: 'arraybuffer' });
     fs.writeFileSync(savePath, response.data);
-    console.log('Latest SPL zip downloaded successfully');
     return true;
   } catch (error) {
     console.error('Error downloading SPL zip:', error);
@@ -356,10 +372,8 @@ async function fetchAndSaveZip(url: string, savePath: string): Promise<boolean> 
 
 function extractZip(zipPath: string, extractPath: string): boolean {
   try {
-    console.log('Extracting latest SPL zip file');
     const zip = new AdmZip(zipPath);
     zip.extractAllTo(extractPath, true);
-    console.log('latest SPL zip extracted successfully');
     return true;
   } catch (error) {
     console.error('Error extracting zip:', error);
@@ -380,7 +394,7 @@ function getSplFileList(splFilesDir: string): any[] {
   });
 }
 
-async function saveOrUpdateEntry(entryToSave: any, model: any): Promise<void> {
+async function saveOrUpdateEntry(entryToSave: any, model: any): Promise<{ action: 'created' | 'updated' | 'skipped' }> {
   const existingEntry = await model.findOne({ code: entryToSave.code, system: entryToSave.system });
   
   if (existingEntry) {
@@ -397,14 +411,14 @@ async function saveOrUpdateEntry(entryToSave: any, model: any): Promise<void> {
           }
         }
       );
-      console.log(`Updated existing code ${entryToSave.code} in database with new endpoints`);
+      return { action: 'updated' };
     } else {
-      console.log(`No changes detected for code ${entryToSave.code}, skipping update in database`);
+      return { action: 'skipped' };
     }
   } else {
     const resource = new model(entryToSave);
     await resource.save();
-    console.log(`Added code ${entryToSave.code} to database`);
+    return { action: 'created' };
   }
 }
 
@@ -414,13 +428,10 @@ function extractAllDrugsFromXml(xmlObj: any): DrugInfo[] {
       return [];
     }
 
-    console.log('Extracting all drugs from XML document');
-
     const components = xmlObj.document.component[0].structuredBody[0].component;
     const productSection = findProductSection(components);
 
     if (!productSection || !productSection.section || !productSection.section[0].subject) {
-      console.error('No product data elements section found in XML');
       return [];
     }
 
@@ -440,29 +451,27 @@ function extractAllDrugsFromXml(xmlObj: any): DrugInfo[] {
         const { brandName, genericName } = drugNames;
         const productNdc = extractProductNdc(subject);
 
-        let remsEndpoint: string | null = null;
+        let remsCdsEndpoint: string | undefined;
+        let remsFhirBaseUrl: string | undefined;
+
         if (subject.manufacturedProduct[0].subjectOf) {
-          remsEndpoint = extractRemsEndpoint(subject.manufacturedProduct[0].subjectOf);
+          const endpoints = extractRemsEndpoints(subject.manufacturedProduct[0].subjectOf);
+          remsCdsEndpoint = endpoints.cdsEndpoint || undefined;
+          remsFhirBaseUrl = endpoints.fhirBaseUrl || undefined;
         }
 
         const drugInfo: DrugInfo = {
           brandName,
           genericName,
-          remsEndpoint: remsEndpoint || undefined,
+          remsCdsEndpoint,
+          remsFhirBaseUrl,
           productNdc: productNdc || undefined
         };
 
         drugs.push(drugInfo);
-        
-        if (remsEndpoint) {
-          console.log(`Found drug with REMS endpoint: ${brandName} -> ${remsEndpoint}`);
-        } else {
-          console.log(`Found drug without REMS endpoint: ${brandName}`);
-        }
       }
     }
 
-    console.log(`Extracted ${drugs.length} drugs from XML`);
     return drugs;
   } catch (error) {
     console.error('Error extracting drugs from XML:', error);
@@ -476,7 +485,7 @@ async function processAllSplFiles(): Promise<{ drugs: any[], stats: { splEndpoin
   const innerExtractPath = join(baseFilePath, 'inner_extracted');
 
   try {
-    console.log('Processing all SPL files...');
+    console.log('Processing SPL files...');
 
     const spl_files_dir = join(extractPath, 'rems_document_spl_files');
     const allZipPaths = getAllSplZipPaths(spl_files_dir);
@@ -486,8 +495,6 @@ async function processAllSplFiles(): Promise<{ drugs: any[], stats: { splEndpoin
     let splApiEndpointCount = 0;
 
     for (const zipPath of allZipPaths) {
-      console.log(`\n--- Processing SPL file: ${path.basename(zipPath)} ---`);
-      
       const specificInnerExtractPath = extractInnerZip(zipPath, innerExtractPath);
       if (!specificInnerExtractPath) continue;
 
@@ -502,25 +509,19 @@ async function processAllSplFiles(): Promise<{ drugs: any[], stats: { splEndpoin
       for (const drug of drugs) {
         let validDrug: any = null;
 
-        if (drug.remsEndpoint) {
-          console.log(`SPL drug with endpoint: ${drug.brandName}`);
-          validDrug = createDrugEntry(drug, drug.remsEndpoint);
+        if (drug.remsCdsEndpoint && drug.remsFhirBaseUrl) {
+          validDrug = createDrugEntry(drug);
           if (validDrug) {
             splEndpointCount++;
           }
         } else {
-          console.log(`Trying API lookup for SPL drug: ${drug.brandName}`);
-          
           const apiResult = await tryApiLookupForDrug(drug);
           
           if (apiResult) {
-            console.log(`Found API endpoint for SPL drug: ${drug.brandName}`);
-            validDrug = createDrugEntry(drug, apiResult.rems_endpoint, apiResult.product_ndc);
+            validDrug = createDrugEntry(drug, apiResult.rems_cds_endpoint, apiResult.rems_fhir_base_url, apiResult.product_ndc);
             if (validDrug) {
               splApiEndpointCount++;
             } 
-          } else {
-            // console.log(`No API endpoint found for SPL drug: ${drug.brandName}`);
           }
         }
 
@@ -530,7 +531,7 @@ async function processAllSplFiles(): Promise<{ drugs: any[], stats: { splEndpoin
       }
     }
 
-    console.log(`\nTotal valid drugs found in SPL files: ${allValidDrugs.length}`);
+    console.log(`Found ${allValidDrugs.length} valid drugs in SPL files`);
     return {
       drugs: allValidDrugs,
       stats: {
@@ -549,6 +550,7 @@ async function processAllSplFiles(): Promise<{ drugs: any[], stats: { splEndpoin
     };
   }
 }
+
 async function tryApiLookupForDrug(drug: DrugInfo): Promise<MedicationApiResponse | null> {
   const searchStrategies = [
     { key: 'product_ndc', value: drug.productNdc },
@@ -561,7 +563,7 @@ async function tryApiLookupForDrug(drug: DrugInfo): Promise<MedicationApiRespons
     
     try {
       const result = await getRemsFromDirectoryApi(strategy.value, strategy.key);
-      if (result) {
+      if (result && result.rems_cds_endpoint && result.rems_fhir_base_url) {
         return result;
       }
     } catch (error: any) {
@@ -574,43 +576,54 @@ async function tryApiLookupForDrug(drug: DrugInfo): Promise<MedicationApiRespons
   return null;
 }
 
-function createDrugEntry(drug: DrugInfo, remsEndpoint: string, apiNdc?: string): any | null {
+function createDrugEntry(drug: DrugInfo, cdsEndpoint?: string, fhirBaseUrl?: string, apiNdc?: string): any | null {
   let code: string;
   let system: string;
   
   if (drug.productNdc) {
     code = drug.productNdc;
     system = 'http://hl7.org/fhir/sid/ndc';
-    console.log(`Using SPL NDC code: ${code} for drug: ${drug.brandName}`);
   } else if (apiNdc) {
     code = apiNdc;
     system = 'http://hl7.org/fhir/sid/ndc';
-    console.log(`Using API NDC code: ${code} for drug: ${drug.brandName}`);
   } else {
     const rxNormMatch = findRxNormCodeFromPhonebook(drug.brandName, drug.genericName);
     if (rxNormMatch) {
       code = rxNormMatch.code;
       system = rxNormMatch.system;
-      console.log(`Using RxNorm code from phonebook: ${code} for drug: ${drug.brandName}`);
     } else {
-      console.log(`No valid code found for drug: ${drug.brandName}, skipping registration`);
       return null;
     }
   }
+
+  const finalCdsEndpoint = cdsEndpoint || drug.remsCdsEndpoint;
+  const finalFhirBaseUrl = fhirBaseUrl || drug.remsFhirBaseUrl;
+
+  if (!finalCdsEndpoint || !finalFhirBaseUrl) {
+    return null;
+  }
+
+  const cdsUrl = finalCdsEndpoint.endsWith('/') 
+    ? finalCdsEndpoint + 'cds-services/rems-'
+    : finalCdsEndpoint + '/cds-services/rems-';
+    
+  const etasuUrl = finalFhirBaseUrl.endsWith('/') 
+    ? finalFhirBaseUrl + '4_0_0/GuidanceResponse/$rems-etasu'
+    : finalFhirBaseUrl + '/4_0_0/GuidanceResponse/$rems-etasu';
 
   return {
     code: code,
     system: system,
     brand_name: drug.brandName,
     generic_name: drug.genericName,
-    to: remsEndpoint + 'cds-services/rems-',
-    toEtasu: remsEndpoint + '4_0_0/GuidanceResponse/$rems-etasu',
+    to: cdsUrl,
+    toEtasu: etasuUrl,
     from: [EHRWhitelist.any]
   };
 }
 
 async function processPhonebookEntries(splDrugs: any[]): Promise<{ drugs: any[], stats: { phonebookApi: number, phonebookDefault: number } }> {
-  console.log('\n--- Processing phonebook entries ---');
+  console.log('Processing phonebook entries...');
   const validPhonebookDrugs: any[] = [];
   let phonebookApiCount = 0;
   let phonebookDefaultCount = 0;
@@ -627,31 +640,30 @@ async function processPhonebookEntries(splDrugs: any[]): Promise<{ drugs: any[],
 
   for (const entry of phonebook) {
     try {
-      console.log(`Processing phonebook entry: ${entry.brand_name} (${entry.code})`);
-      
       const brandInSpl = splDrugNames.has(entry.brand_name.toLowerCase());
       const genericInSpl = splDrugNames.has(entry.generic_name.toLowerCase());
       
       if (brandInSpl || genericInSpl) {
-        console.log(`Skipping phonebook entry for ${entry.brand_name} - already found in SPL`);
-        continue;
+        continue; // Skip if already found in SPL
       }
       
       const apiResult = await getRemsFromDirectoryApi(entry.code);
       
       let entryToSave = { ...entry } as any;
       
-      if (apiResult) {
-        entryToSave.to = apiResult.rems_endpoint + 'cds-services/rems-';
-        entryToSave.toEtasu = apiResult.rems_endpoint + '4_0_0/GuidanceResponse/$rems-etasu';
+      if (apiResult && apiResult.rems_cds_endpoint && apiResult.rems_fhir_base_url) {
+        entryToSave.to = apiResult.rems_cds_endpoint.endsWith('/') 
+          ? apiResult.rems_cds_endpoint + 'cds-services/rems-'
+          : apiResult.rems_cds_endpoint + '/cds-services/rems-';
         
-        console.log(`Found API endpoint for phonebook drug: ${entry.brand_name}`);
+        entryToSave.toEtasu = apiResult.rems_fhir_base_url.endsWith('/') 
+          ? apiResult.rems_fhir_base_url + '4_0_0/GuidanceResponse/$rems-etasu'
+          : apiResult.rems_fhir_base_url + '/4_0_0/GuidanceResponse/$rems-etasu';
+        
         phonebookApiCount++;
       } else {
-        // Use environment defaults only for phonebook entries
         entryToSave.to = REMSAdminWhitelist.standardRemsAdmin;
         entryToSave.toEtasu = REMSAdminWhitelist.standardRemsAdminEtasu;
-        console.log(`Using default endpoints for phonebook drug: ${entry.brand_name}`);
         phonebookDefaultCount++;
       }
       
@@ -661,7 +673,7 @@ async function processPhonebookEntries(splDrugs: any[]): Promise<{ drugs: any[],
     }
   }
 
-  console.log(`Total valid phonebook drugs: ${validPhonebookDrugs.length}`);
+  console.log(`Processed ${validPhonebookDrugs.length} phonebook entries`);
   return {
     drugs: validPhonebookDrugs,
     stats: {
@@ -672,25 +684,20 @@ async function processPhonebookEntries(splDrugs: any[]): Promise<{ drugs: any[],
 }
 
 async function downloadSplZip(): Promise<any> {
-  // Create base directories to store and process the zip files
   const baseFilePath = join(process.cwd(), 'rems-spl-files');
   const extractPath = join(baseFilePath, 'extracted');
   const innerExtractPath = join(baseFilePath, 'inner_extracted');
   const mainZipPath = join(baseFilePath, REMSAdminWhitelist.zipFileName);
 
-  // Create directories if they don't exist
   createDirectories([baseFilePath, extractPath, innerExtractPath]);
 
   try {
-    // Always re-download the main zip file to ensure we have the latest data
     const splZipUrl = `${REMSAdminWhitelist.discoveryUrlBase}${REMSAdminWhitelist.discoverySplZipEndpoint}`;
     const downloadSuccess = await fetchAndSaveZip(splZipUrl, mainZipPath);
     if (!downloadSuccess) return null;
 
-    // Clean extraction directories to ensure fresh data
     cleanDirectories([extractPath, innerExtractPath]);
 
-    // Extract the main zip
     const extractSuccess = extractZip(mainZipPath, extractPath);
     if (!extractSuccess) return null;
 
@@ -708,24 +715,23 @@ export async function getRemsFromDirectoryApi(searchValue: string, searchKey: st
       return null;
     }
 
-    // Call the directory service API
     const apiUrl = `${REMSAdminWhitelist.discoveryUrlBase}${REMSAdminWhitelist.discoveryApiEndpoint}?search=${searchKey}="${searchValue}"`;
-    console.log(`Fetching ${searchKey} ${searchValue} from directory service API: ${apiUrl}`);
 
     const response = await axios.get(apiUrl);
 
     if (response.status === 200 && response.data.results && response.data.results.length > 0) {
       const medication: MedicationApiResponse = response.data.results[0];
-      console.log(`Found ${searchKey} ${searchValue} info from API:`, medication);
+      
+      if (!medication.rems_cds_endpoint || !medication.rems_fhir_base_url) {
+        return null;
+      }
+      
       return medication;
     } else {
-      console.log(`${searchKey} ${searchValue} not found in API`);
       return null;
     }
   } catch (error: any) {
-    if (error.response?.status === 404) {
-      console.log(`${searchKey} ${searchValue} not found in API`);
-    } else {
+    if (error.response?.status !== 404) {
       console.error('Error fetching from directory API:', error.message);
     }
     return null;
@@ -736,40 +742,34 @@ export async function loadPhonebook() {
   const model = Connection;
 
   try {
-    console.log('\n========================================');
     console.log('Starting drug registration process...');
-    console.log('========================================');
 
     // Step 1: Download and prepare SPL files
-    console.log('\nStep 1: Downloading SPL files...');
     await downloadSplZip();
 
     // Step 2: Process all SPL files
-    console.log('\nStep 2: Processing all SPL files...');
     const splResult = await processAllSplFiles();
 
     // Step 3: Process phonebook entries
-    console.log('\nStep 3: Processing phonebook entries...');
     const phonebookResult = await processPhonebookEntries(splResult.drugs);
 
     // Step 4: Save all valid drugs to database
-    console.log('\nStep 4: Saving drugs to database...');
+    console.log('Saving to database...');
     const allValidDrugs = [...splResult.drugs, ...phonebookResult.drugs];
     
+    let savedCount = 0;
+    let updatedCount = 0;
+    let skippedCount = 0;
+
     for (const drug of allValidDrugs) {
-      await saveOrUpdateEntry(drug, model);
+      const result = await saveOrUpdateEntry(drug, model);
+      if (result.action === 'created') savedCount++;
+      else if (result.action === 'updated') updatedCount++;
+      else skippedCount++;
     }
 
-    console.log('\n========================================');
-    console.log(`Drug registration completed successfully!`);
-    console.log(`Total drugs registered: ${allValidDrugs.length}`);
-    console.log('');
-    console.log('Registration breakdown:');
-    console.log(`  SPL drugs with endpoints in files: ${splResult.stats.splEndpoint}`);
-    console.log(`  SPL drugs found via API fallback: ${splResult.stats.splApiEndpoint}`);
-    console.log(`  Phonebook drugs found via API: ${phonebookResult.stats.phonebookApi}`);
-    console.log(`  Phonebook drugs using defaults: ${phonebookResult.stats.phonebookDefault}`);
-    console.log('========================================');
+    console.log('Drug registration completed successfully!');
+    console.log(`Total: ${allValidDrugs.length} | Saved: ${savedCount} | Updated: ${updatedCount} | Skipped: ${skippedCount}`);
 
   } catch (error) {
     console.error('Error in loadPhonebook:', error);
@@ -787,7 +787,6 @@ export async function getServiceConnection(coding: Coding, requester: string | u
       return registeredRequester === EHRWhitelist.any || registeredRequester === requester;
     });
     if (sources.length > 0) {
-      // valid requester, forward request
       return connection;
     }
   }
