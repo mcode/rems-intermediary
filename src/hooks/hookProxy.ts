@@ -530,7 +530,7 @@ async function processAllSplFiles(): Promise<{ drugs: any[], stats: { splEndpoin
           const apiResult = await tryApiLookupForDrug(drug);
           
           if (apiResult) {
-            console.log(`  🎯  SPL→API REMS FOUND: ${drug.brandName}`);
+            console.log(`  🎯  SPL → API REMS FOUND: ${drug.brandName}`);
             console.log(`     🔗  CDS: ${apiResult.rems_cds_endpoint}`);
             console.log(`     🔗  FHIR: ${apiResult.rems_fhir_base_url}`);
             validDrug = createDrugEntry(drug, apiResult.rems_cds_endpoint, apiResult.rems_fhir_base_url, apiResult.product_ndc);
@@ -666,9 +666,9 @@ async function processPhonebookEntries(splDrugs: any[]): Promise<{ drugs: any[],
       let entryToSave = { ...entry } as any;
       
       if (apiResult && apiResult.rems_cds_endpoint && apiResult.rems_fhir_base_url) {
-        console.log(`   🎯  PHONEBOOK→API REMS FOUND: ${entry.brand_name} (${entry.code})`);
-        console.log(`     🔗  CDS: ${apiResult.rems_cds_endpoint}`);
-        console.log(`     🔗  FHIR: ${apiResult.rems_fhir_base_url}`);
+        console.log(`    🎯  PHONEBOOK → API REMS FOUND: ${entry.brand_name} (${entry.code})`);
+        console.log(`      🔗  CDS: ${apiResult.rems_cds_endpoint}`);
+        console.log(`      🔗  FHIR: ${apiResult.rems_fhir_base_url}`);
         
         entryToSave.to = apiResult.rems_cds_endpoint.endsWith('/') 
           ? apiResult.rems_cds_endpoint + 'cds-services/rems-'
@@ -680,8 +680,8 @@ async function processPhonebookEntries(splDrugs: any[]): Promise<{ drugs: any[],
         
         phonebookApiCount++;
       } else {
-        console.log(`   ⚙️  PHONEBOOK DEFAULT USED: ${entry.brand_name} (${entry.code})`);
-        console.log(`     🔗  Using fallback endpoints`);
+        console.log(`    ⚙️  PHONEBOOK DEFAULT USED: ${entry.brand_name} (${entry.code})`);
+        console.log(`      🔗  Using fallback endpoints`);
         entryToSave.to = REMSAdminWhitelist.standardRemsAdmin;
         entryToSave.toEtasu = REMSAdminWhitelist.standardRemsAdminEtasu;
         phonebookDefaultCount++;
@@ -788,8 +788,8 @@ export async function loadPhonebook() {
     console.log('\nFINAL REMS ENDPOINT SUMMARY:');
     console.log('=====================================');
     console.log(`SPL File Endpoints: ${splResult.stats.splEndpoint}`);
-    console.log(`SPL→API Endpoints: ${splResult.stats.splApiEndpoint}`);
-    console.log(`Phonebook→API Endpoints: ${phonebookResult.stats.phonebookApi}`);
+    console.log(`SPL → API Endpoints: ${splResult.stats.splApiEndpoint}`);
+    console.log(`Phonebook → API Endpoints: ${phonebookResult.stats.phonebookApi}`);
     console.log(`Default Endpoints Used: ${phonebookResult.stats.phonebookDefault}`);
     console.log(`=====================================`);
     console.log(`💾  Database: ${savedCount} saved | ${updatedCount} updated | ${skippedCount} skipped`);
