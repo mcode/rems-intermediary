@@ -84,7 +84,6 @@ const Connections = () => {
                                     <TableCell align="right">Patient DOB</TableCell>
                                     <TableCell align="right">Status</TableCell>
                                     <TableCell align="right">Dispense Status</TableCell>
-                                    <TableCell align="left">Authorization Number</TableCell>
                                     <TableCell align="right">Delete</TableCell>
                                     </TableRow>
                                 </TableHead>
@@ -100,7 +99,6 @@ const Connections = () => {
                                         <TableCell align="right">{row.patientDOB}</TableCell>
                                         <TableCell align="right">{row.status}</TableCell>
                                         <TableCell align="right">{row.dispenseStatus}</TableCell>
-                                        <TableCell align="right">{row.auth_number}</TableCell>
                                         <TableCell align="right">
                                             {/* <IconButton
                                                 aria-label="delete"
