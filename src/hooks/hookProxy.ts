@@ -193,7 +193,7 @@ function extractRemsEndpoints(subjectOf: any[]): { cdsEndpoint: string | null, f
             remsUrl = referenceElement._;
           }
           
-          console.log(`Found reference - Title: "${title}", URL: "${remsUrl}"`);
+          console.log(`  ✅  Found reference - Title: "${title}", URL: "${remsUrl}"`);
           
           if (remsUrl) {
             // Check for CDS hooks discovery endpoint
@@ -205,7 +205,7 @@ function extractRemsEndpoints(subjectOf: any[]): { cdsEndpoint: string | null, f
               } else {
                 cdsEndpoint = remsUrl;
               }
-              console.log(`  ✅ CDS Endpoint found: ${cdsEndpoint}`);
+              console.log(`     🔗  CDS Endpoint found: ${cdsEndpoint}`);
             }
             
             // Check for FHIR base URL
@@ -215,7 +215,7 @@ function extractRemsEndpoints(subjectOf: any[]): { cdsEndpoint: string | null, f
               } else {
                 fhirBaseUrl = remsUrl;
               }
-              console.log(`  ✅ FHIR Base URL found: ${fhirBaseUrl}`);
+              console.log(`     🔗  FHIR Base URL found: ${fhirBaseUrl}`);
             }
           }
         }
@@ -504,7 +504,7 @@ async function processAllSplFiles(): Promise<{ drugs: any[], stats: { splEndpoin
     let splApiEndpointCount = 0;
 
     for (const zipPath of allZipPaths) {
-      console.log(`Processing: ${path.basename(zipPath)}`);
+      console.log(`\n Processing: ${path.basename(zipPath)}`);
       
       const specificInnerExtractPath = extractInnerZip(zipPath, innerExtractPath);
       if (!specificInnerExtractPath) continue;
@@ -522,9 +522,6 @@ async function processAllSplFiles(): Promise<{ drugs: any[], stats: { splEndpoin
         let validDrug: any = null;
 
         if (drug.remsCdsEndpoint && drug.remsFhirBaseUrl) {
-          console.log(`  🎯 SPL REMS FOUND: ${drug.brandName}`);
-          console.log(`     CDS: ${drug.remsCdsEndpoint}`);
-          console.log(`     FHIR: ${drug.remsFhirBaseUrl}`);
           validDrug = createDrugEntry(drug);
           if (validDrug) {
             splEndpointCount++;
@@ -533,9 +530,9 @@ async function processAllSplFiles(): Promise<{ drugs: any[], stats: { splEndpoin
           const apiResult = await tryApiLookupForDrug(drug);
           
           if (apiResult) {
-            console.log(`  🎯 API REMS FOUND: ${drug.brandName}`);
-            console.log(`     CDS: ${apiResult.rems_cds_endpoint}`);
-            console.log(`     FHIR: ${apiResult.rems_fhir_base_url}`);
+            console.log(`  🎯  SPL→API REMS FOUND: ${drug.brandName}`);
+            console.log(`     🔗  CDS: ${apiResult.rems_cds_endpoint}`);
+            console.log(`     🔗  FHIR: ${apiResult.rems_fhir_base_url}`);
             validDrug = createDrugEntry(drug, apiResult.rems_cds_endpoint, apiResult.rems_fhir_base_url, apiResult.product_ndc);
             if (validDrug) {
               splApiEndpointCount++;
@@ -548,8 +545,6 @@ async function processAllSplFiles(): Promise<{ drugs: any[], stats: { splEndpoin
         }
       }
     }
-
-    console.log(`Found ${allValidDrugs.length} valid drugs in SPL files`);
     return {
       drugs: allValidDrugs,
       stats: {
@@ -586,7 +581,7 @@ async function tryApiLookupForDrug(drug: DrugInfo): Promise<MedicationApiRespons
       }
     } catch (error: any) {
       if (error.response?.status !== 404) {
-        console.error(`API lookup failed for ${strategy.key}=${strategy.value}:`, error.message);
+        console.error(`    ⚠️  API lookup failed for ${strategy.key}=${strategy.value}:`, error.message);
       }
     }
   }
@@ -641,34 +636,39 @@ function createDrugEntry(drug: DrugInfo, cdsEndpoint?: string, fhirBaseUrl?: str
 }
 
 async function processPhonebookEntries(splDrugs: any[]): Promise<{ drugs: any[], stats: { phonebookApi: number, phonebookDefault: number } }> {
-  console.log('Processing phonebook entries...');
+  console.log('\nProcessing phonebook entries...');
   const validPhonebookDrugs: any[] = [];
   let phonebookApiCount = 0;
   let phonebookDefaultCount = 0;
 
   const splCodesProcessed = new Set<string>();
   splDrugs.forEach(drug => {
-    if (drug.code && drug.system && drug._source === 'spl') {
+    if (drug.code && drug.system) {
       const codeKey = `${drug.system}|${drug.code}`;
       splCodesProcessed.add(codeKey);
     }
   });
 
+  console.log(`  ⏭️  Skipping ${splCodesProcessed.size} codes already found in SPL processing`);
+
   for (const entry of phonebook) {
     try {
-      const entryCodeKey = `${entry.system}|${entry.code}`;       
+      const entryCodeKey = `${entry.system}|${entry.code}`;
+      
       if (splCodesProcessed.has(entryCodeKey)) {
-        continue; // Skip if already found in SPL
+        continue;
       }
-            
+      
+      console.log(`\n  📞 Processing phonebook entry: ${entry.brand_name} (${entry.code})`);
+      
       const apiResult = await getRemsFromDirectoryApi(entry.code);
       
       let entryToSave = { ...entry } as any;
       
       if (apiResult && apiResult.rems_cds_endpoint && apiResult.rems_fhir_base_url) {
-        console.log(`🎯 PHONEBOOK API REMS FOUND: ${entry.brand_name} (${entry.code})`);
-        console.log(`   CDS: ${apiResult.rems_cds_endpoint}`);
-        console.log(`   FHIR: ${apiResult.rems_fhir_base_url}`);
+        console.log(`   🎯  PHONEBOOK→API REMS FOUND: ${entry.brand_name} (${entry.code})`);
+        console.log(`     🔗  CDS: ${apiResult.rems_cds_endpoint}`);
+        console.log(`     🔗  FHIR: ${apiResult.rems_fhir_base_url}`);
         
         entryToSave.to = apiResult.rems_cds_endpoint.endsWith('/') 
           ? apiResult.rems_cds_endpoint + 'cds-services/rems-'
@@ -680,7 +680,8 @@ async function processPhonebookEntries(splDrugs: any[]): Promise<{ drugs: any[],
         
         phonebookApiCount++;
       } else {
-        console.log(`Using default endpoints for ${entry.brand_name} (${entry.code})`);
+        console.log(`   ⚙️  PHONEBOOK DEFAULT USED: ${entry.brand_name} (${entry.code})`);
+        console.log(`     🔗  Using fallback endpoints`);
         entryToSave.to = REMSAdminWhitelist.standardRemsAdmin;
         entryToSave.toEtasu = REMSAdminWhitelist.standardRemsAdminEtasu;
         phonebookDefaultCount++;
@@ -688,11 +689,10 @@ async function processPhonebookEntries(splDrugs: any[]): Promise<{ drugs: any[],
       
       validPhonebookDrugs.push(entryToSave);
     } catch (error) {
-      console.error(`Error processing phonebook entry ${entry.code}:`, error);
+      console.error(`    ❌  Error processing phonebook entry ${entry.code}:`, error);
     }
   }
 
-  console.log(`Processed ${validPhonebookDrugs.length} phonebook entries (${phonebookApiCount} via API, ${phonebookDefaultCount} using defaults)`);
   return {
     drugs: validPhonebookDrugs,
     stats: {
@@ -761,7 +761,6 @@ export async function loadPhonebook() {
   const model = Connection;
 
   try {
-    console.log('Starting drug registration process...');
 
     // Step 1: Download and prepare SPL files
     await downloadSplZip();
@@ -773,7 +772,6 @@ export async function loadPhonebook() {
     const phonebookResult = await processPhonebookEntries(splResult.drugs);
 
     // Step 4: Save all valid drugs to database
-    console.log('Saving to database...');
     const allValidDrugs = [...splResult.drugs, ...phonebookResult.drugs];
     
     let savedCount = 0;
@@ -787,11 +785,14 @@ export async function loadPhonebook() {
       else skippedCount++;
     }
 
-    console.log('\n🎯 REMS ENDPOINT SUMMARY:');
-    console.log(`SPL Endpoints Found: ${splResult.stats.splEndpoint}`);
-    console.log(`API Endpoints Found: ${splResult.stats.splApiEndpoint + phonebookResult.stats.phonebookApi}`);
+    console.log('\nFINAL REMS ENDPOINT SUMMARY:');
+    console.log('=====================================');
+    console.log(`SPL File Endpoints: ${splResult.stats.splEndpoint}`);
+    console.log(`SPL→API Endpoints: ${splResult.stats.splApiEndpoint}`);
+    console.log(`Phonebook→API Endpoints: ${phonebookResult.stats.phonebookApi}`);
     console.log(`Default Endpoints Used: ${phonebookResult.stats.phonebookDefault}`);
-    console.log(`\nDatabase: ${savedCount} saved | ${updatedCount} updated | ${skippedCount} skipped`);
+    console.log(`=====================================`);
+    console.log(`💾  Database: ${savedCount} saved | ${updatedCount} updated | ${skippedCount} skipped`);
 
   } catch (error) {
     console.error('Error in loadPhonebook:', error);
