@@ -173,42 +173,50 @@ function extractRemsEndpoints(subjectOf: any[]): { cdsEndpoint: string | null, f
   let fhirBaseUrl: string | null = null;
 
   for (const item of subjectOf) {
-    if (item.document && 
-        item.document[0] && 
-        item.document[0].title && 
-        item.document[0].title[0] && 
-        item.document[0].text && 
-        item.document[0].text[0] && 
-        item.document[0].text[0].reference) {
-      
-      const title = item.document[0].title[0];
-      const referenceValue = item.document[0].text[0].reference[0];
-      let remsUrl;
-      
-      if (typeof referenceValue === 'string') {
-        remsUrl = referenceValue;
-      } else if (referenceValue.$ && referenceValue.$.value) {
-        remsUrl = referenceValue.$.value;
-      }
-      
-      if (remsUrl) {
-        // Check for CDS hooks discovery endpoint
-        if (title.includes('CDS Hooks Discovery') || title.includes('CDS Services')) {
-          if (remsUrl.includes(':rems_cds_discovery:')) {
-            cdsEndpoint = remsUrl.split(':rems_cds_discovery:')[1];
-          } else if (remsUrl.includes(':rems_discovery:')) {
-            cdsEndpoint = remsUrl.split(':rems_discovery:')[1];
-          } else {
-            cdsEndpoint = remsUrl;
+    if (item.document && Array.isArray(item.document)) {
+      for (const doc of item.document) {
+        if (doc.title && 
+            doc.title[0] && 
+            doc.text && 
+            doc.text[0] && 
+            doc.text[0].reference) {
+          
+          const title = doc.title[0];
+          const referenceElement = doc.text[0].reference[0];
+          let remsUrl;
+          
+          if (typeof referenceElement === 'string') {
+            remsUrl = referenceElement;
+          } else if (referenceElement && referenceElement.$ && referenceElement.$.value) {
+            remsUrl = referenceElement.$.value;
+          } else if (referenceElement && typeof referenceElement === 'object' && referenceElement._) {
+            remsUrl = referenceElement._;
           }
-        }
-        
-        // Check for FHIR base URL
-        if (title.includes('FHIR Base URL') || title.includes('FHIR Server')) {
-          if (remsUrl.includes(':rems_fhir_base:')) {
-            fhirBaseUrl = remsUrl.split(':rems_fhir_base:')[1];
-          } else {
-            fhirBaseUrl = remsUrl;
+          
+          console.log(`Found reference - Title: "${title}", URL: "${remsUrl}"`);
+          
+          if (remsUrl) {
+            // Check for CDS hooks discovery endpoint
+            if (title.includes('CDS Hooks Discovery') || title.includes('CDS Services')) {
+              if (remsUrl.includes(':rems_cds_discovery:')) {
+                cdsEndpoint = remsUrl.split(':rems_cds_discovery:')[1];
+              } else if (remsUrl.includes(':rems_discovery:')) {
+                cdsEndpoint = remsUrl.split(':rems_discovery:')[1];
+              } else {
+                cdsEndpoint = remsUrl;
+              }
+              console.log(`  ✅ CDS Endpoint found: ${cdsEndpoint}`);
+            }
+            
+            // Check for FHIR base URL
+            if (title.includes('FHIR Base URL') || title.includes('FHIR Server')) {
+              if (remsUrl.includes(':rems_fhir_base:')) {
+                fhirBaseUrl = remsUrl.split(':rems_fhir_base:')[1];
+              } else {
+                fhirBaseUrl = remsUrl;
+              }
+              console.log(`  ✅ FHIR Base URL found: ${fhirBaseUrl}`);
+            }
           }
         }
       }
@@ -286,7 +294,6 @@ function getAllSplZipPaths(spl_files_dir: string): string[] {
   
   const files = fs.readdirSync(spl_files_dir);
   const zipFiles = files.filter((file: string) => file.endsWith('.zip'));
-  console.log(`Found ${zipFiles.length} zip files in ${spl_files_dir}`);
   
   return zipFiles.map((file: string) => join(spl_files_dir, file));
 }
@@ -639,25 +646,21 @@ async function processPhonebookEntries(splDrugs: any[]): Promise<{ drugs: any[],
   let phonebookApiCount = 0;
   let phonebookDefaultCount = 0;
 
-  const splDrugNames = new Set<string>();
+  const splCodesProcessed = new Set<string>();
   splDrugs.forEach(drug => {
-    if (drug.brand_name && typeof drug.brand_name === 'string') {
-      splDrugNames.add(drug.brand_name.toLowerCase());
-    }
-    if (drug.generic_name && typeof drug.generic_name === 'string') {
-      splDrugNames.add(drug.generic_name.toLowerCase());
+    if (drug.code && drug.system && drug._source === 'spl') {
+      const codeKey = `${drug.system}|${drug.code}`;
+      splCodesProcessed.add(codeKey);
     }
   });
 
   for (const entry of phonebook) {
     try {
-      const brandInSpl = splDrugNames.has(entry.brand_name.toLowerCase());
-      const genericInSpl = splDrugNames.has(entry.generic_name.toLowerCase());
-      
-      if (brandInSpl || genericInSpl) {
+      const entryCodeKey = `${entry.system}|${entry.code}`;       
+      if (splCodesProcessed.has(entryCodeKey)) {
         continue; // Skip if already found in SPL
       }
-      
+            
       const apiResult = await getRemsFromDirectoryApi(entry.code);
       
       let entryToSave = { ...entry } as any;
@@ -677,6 +680,7 @@ async function processPhonebookEntries(splDrugs: any[]): Promise<{ drugs: any[],
         
         phonebookApiCount++;
       } else {
+        console.log(`Using default endpoints for ${entry.brand_name} (${entry.code})`);
         entryToSave.to = REMSAdminWhitelist.standardRemsAdmin;
         entryToSave.toEtasu = REMSAdminWhitelist.standardRemsAdminEtasu;
         phonebookDefaultCount++;
