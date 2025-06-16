@@ -659,7 +659,7 @@ async function processPhonebookEntries(splDrugs: any[]): Promise<{ drugs: any[],
         continue;
       }
       
-      console.log(`\n  📞 Processing phonebook entry: ${entry.brand_name} (${entry.code})`);
+      console.log(`\n  📞  Processing phonebook entry: ${entry.brand_name} (${entry.code})`);
       
       const apiResult = await getRemsFromDirectoryApi(entry.code);
       
