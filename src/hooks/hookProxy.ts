@@ -28,7 +28,7 @@ interface DrugInfo {
   genericName: string;
   remsCdsEndpoint?: string;
   remsFhirBaseUrl?: string;
-  productNdc?: string;
+  packageNdc?: string;
   approvalId?: string;
 }
 
@@ -226,7 +226,7 @@ function extractRemsEndpoints(subjectOf: any[]): { cdsEndpoint: string | null, f
   return { cdsEndpoint, fhirBaseUrl };
 }
 
-function extractProductNdc(subject: any): string | null {
+function extractPackageNdc(subject: any): string | null {
   if (subject.manufacturedProduct && 
       subject.manufacturedProduct[0] && 
       subject.manufacturedProduct[0].subjectOf) {
@@ -457,7 +457,7 @@ function extractAllDrugsFromXml(xmlObj: any): DrugInfo[] {
         if (!drugNames) continue;
 
         const { brandName, genericName } = drugNames;
-        const productNdc = extractProductNdc(subject);
+        const packageNdc = extractPackageNdc(subject);
 
         let remsCdsEndpoint: string | undefined;
         let remsFhirBaseUrl: string | undefined;
@@ -473,7 +473,7 @@ function extractAllDrugsFromXml(xmlObj: any): DrugInfo[] {
           genericName,
           remsCdsEndpoint,
           remsFhirBaseUrl,
-          productNdc: productNdc || undefined
+          packageNdc: packageNdc || undefined
         };
 
         drugs.push(drugInfo);
@@ -566,7 +566,7 @@ async function processAllSplFiles(): Promise<{ drugs: any[], stats: { splEndpoin
 
 async function tryApiLookupForDrug(drug: DrugInfo): Promise<MedicationApiResponse | null> {
   const searchStrategies = [
-    { key: 'package_ndc', value: drug.productNdc },
+    { key: 'package_ndc', value: drug.packageNdc },
     { key: 'brand_name', value: drug.brandName },
     { key: 'generic_name', value: drug.genericName }
   ];
@@ -593,8 +593,8 @@ function createDrugEntry(drug: DrugInfo, cdsEndpoint?: string, fhirBaseUrl?: str
   let code: string;
   let system: string;
   
-  if (drug.productNdc) {
-    code = drug.productNdc;
+  if (drug.packageNdc) {
+    code = drug.packageNdc;
     system = 'http://hl7.org/fhir/sid/ndc';
   } else if (apiNdc) {
     code = apiNdc;
