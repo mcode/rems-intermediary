@@ -15,7 +15,7 @@ export const EHRWhitelist = {
 interface MedicationApiResponse {
   brand_name: string;
   generic_name: string;
-  product_ndc: string;
+  package_ndc: string;
   rems_administrator: string;
   rems_cds_endpoint: string;
   rems_fhir_base_url: string;
@@ -533,7 +533,7 @@ async function processAllSplFiles(): Promise<{ drugs: any[], stats: { splEndpoin
             console.log(`  🎯  SPL → API REMS FOUND: ${drug.brandName}`);
             console.log(`     🔗  CDS: ${apiResult.rems_cds_endpoint}`);
             console.log(`     🔗  FHIR: ${apiResult.rems_fhir_base_url}`);
-            validDrug = createDrugEntry(drug, apiResult.rems_cds_endpoint, apiResult.rems_fhir_base_url, apiResult.product_ndc);
+            validDrug = createDrugEntry(drug, apiResult.rems_cds_endpoint, apiResult.rems_fhir_base_url, apiResult.package_ndc);
             if (validDrug) {
               splApiEndpointCount++;
             }
@@ -566,7 +566,7 @@ async function processAllSplFiles(): Promise<{ drugs: any[], stats: { splEndpoin
 
 async function tryApiLookupForDrug(drug: DrugInfo): Promise<MedicationApiResponse | null> {
   const searchStrategies = [
-    { key: 'product_ndc', value: drug.productNdc },
+    { key: 'package_ndc', value: drug.productNdc },
     { key: 'brand_name', value: drug.brandName },
     { key: 'generic_name', value: drug.genericName }
   ];
@@ -728,7 +728,7 @@ async function downloadSplZip(): Promise<any> {
   }
 }
 
-export async function getRemsFromDirectoryApi(searchValue: string, searchKey: string = 'product_ndc'): Promise<MedicationApiResponse | null> {
+export async function getRemsFromDirectoryApi(searchValue: string, searchKey: string = 'package_ndc'): Promise<MedicationApiResponse | null> {
   try {
     if (!searchValue) {
       return null;
