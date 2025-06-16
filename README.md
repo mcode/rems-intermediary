@@ -83,7 +83,7 @@ The FHIR Server built into the REMS Intermediary contains a REMS ETASU check at 
   * Input requires a parameter containing the following:
     * `patient` - Patient FHIR Resource, must include `medication` with `patient`
     * `medication` - Medication or MedicationRequest FHIR Resource, must include `patient` with `medication`
-    * `authNumber` - String containing the REMS Authorization Number, may be sent without `patient` or `medication`
+    * `caseNumber` - String containing the REMS Case Number, may be sent without `patient` or `medication`
   * Returns a GuidanceResponse within a Parameter with the status
     * Contains Nested GuidanceResponse resources for each ETASU requirement with their status
 
