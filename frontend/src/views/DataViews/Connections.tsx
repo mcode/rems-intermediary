@@ -84,6 +84,20 @@ const Connections = () => {
         await getExistingConnections();
     }
 
+    const reloadSpl = async () => {
+        const url = process.env.BACKEND_API_BASE + '/api/reload';
+        await axios
+        .post(url)
+        .then(async function (response: any) {
+            // after reload is completed, refresh the connections
+            getExistingConnections();
+        })
+        .catch((error: any) => {
+            setIsLoading(false);
+            console.log('Error -- > ', error);
+        });
+    }
+
     const registerClient = () => {
         setConnection({code: '', to: '', toEtasu: '', from: [''], system: '', _id: ''});
         setAddNew(true);
@@ -125,6 +139,17 @@ const Connections = () => {
                 >
                     <Card>
                         <div className="right-btn">
+                            <Button
+                                variant="contained"
+                                sx={{backgroundColor: '#53508E'}} 
+                                startIcon={<Refresh />}
+                                onClick={() => {
+                                    reloadSpl();
+                                }}
+                            >
+                                Reload
+                            </Button>
+                            <div className='button-gap'>&nbsp;</div>
                             <Button
                                 variant="contained"
                                 sx={{backgroundColor: '#53508E'}} 
