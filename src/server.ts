@@ -33,7 +33,7 @@ const initialize = (config: Config): REMSIntermediary => {
     .setProfileRoutes()
     .registerEndpoint()
     .registerCdsHooks(config.server)
-    .registerNcpdpScript()
+    .registerNcpdpScript(config.general)
     .setupLogin()
     .setErrorRoutes();
 };
@@ -129,18 +129,19 @@ class REMSIntermediary extends Server {
     return this;
   }
 
-  registerNcpdpScript() {
+  registerNcpdpScript({ ncpdpScriptForwardUrl }: Config['general']) {
+    console.log('Startup... forwarding NCPDP SCRIPT messages to ' + ncpdpScriptForwardUrl);
     this.app.post('/script', async (req: any, res: any) => {
-      const scriptServer = 'http://localhost:5051/ncpdp/script';
       console.log('Processing NCPDP SCRIPT message');
-      console.log('    forwarding message to ' + scriptServer);
+      console.log('    forwarding message to ' + ncpdpScriptForwardUrl);
+
       // forward the message!
       const options = {
         method: 'POST',
         data: req.body,
         headers: req.headers
       };
-      const response = await axios(scriptServer, options);
+      const response = await axios(ncpdpScriptForwardUrl, options);
       return response.data;
     });
     return this;
