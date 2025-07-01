@@ -37,7 +37,7 @@ export default async function main() {
   }
   Globals.databaseClient = dbClient.client;
   Globals.database = dbClient.database;
-  //zzzz loadPhonebook();
+  loadPhonebook();
   const app = initialize(config);
 
   // Start the application
