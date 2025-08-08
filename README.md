@@ -121,3 +121,34 @@ Following are a list of modifiable paths:
 | EHR_URL           | `http://localhost:8080/test-ehr/r4`                                            | URL for the EHR System                  |
 | DIRECTORY_SERVICE_URL | http://localhost:3323 | The url for the directory server |
 | SPL_ZIP_FILE_NAME | TESTDATA_rems_document_and_rems_indexing_spl_files.zip | The file name of the spl zip expected to be downloaded |
+
+# Data Rights
+
+<div style="text-align:center">
+<b>NOTICE</b>
+</div>
+
+This (software/technical data) was produced for the U. S. Government under Contract Number 75FCMC18D0047/75FCMC23D0004, and is subject to Federal Acquisition Regulation Clause 52.227-14, Rights in Data-General.
+
+
+No other use other than that granted to the U. S. Government, or to those acting on behalf of the U. S. Government under that Clause is authorized without the express written permission of The MITRE Corporation.
+
+
+For further information, please contact The MITRE Corporation, Contracts Management Office, 7515 Colshire Drive, McLean, VA 22102-7539, (703) 983-6000.
+
+<div style="text-align:center">
+<b>&copy;2025 The MITRE Corporation.</b>
+</div>
+
+<br />
+
+Licensed under the Apache License, Version 2.0 (the "License"); use of this repository is permitted in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
