@@ -47,6 +47,9 @@
   justify-content: flex-end;
   margin: 10px 16px 10px 0;
 }
+.button-gap {
+  min-width: 100px;
+}
 
 .App h1 {
   color: white;

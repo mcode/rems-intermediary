@@ -17,7 +17,7 @@ import { IncomingMessage, ServerResponse } from 'node:http';
 import axios from 'axios';
 import path from 'path';
 import { Connection } from './lib/schemas/Phonebook';
-import { EHRWhitelist } from './hooks/hookProxy';
+import { EHRWhitelist, loadPhonebook } from './hooks/hookProxy';
 import cookieParser from 'cookie-parser';
 
 const logger = container.get('application');
@@ -33,6 +33,7 @@ const initialize = (config: Config): REMSIntermediary => {
     .setProfileRoutes()
     .registerEndpoint()
     .registerCdsHooks(config.server)
+    .registerNcpdpScript(config.general)
     .setupLogin()
     .setErrorRoutes();
 };
@@ -77,7 +78,7 @@ class REMSIntermediary extends Server {
     this.app.set('jsonp callback', true);
     this.app.use(bodyParser.urlencoded({ limit: '50mb', extended: true }));
     this.app.use(bodyParser.json({ limit: '50mb' }));
-
+    this.app.use(bodyParser.text({ limit: '50mb', type: 'application/xml' }));
     this.app.use(cookieParser());
     this.app.use(cors(corsOptions));
     this.app.options('*', cors(corsOptions));
@@ -125,6 +126,24 @@ class REMSIntermediary extends Server {
     this.app.get(discoveryEndpoint, (_req: any, res: { json: (arg0: { services: any }) => any }) =>
       res.json({ services: this.services })
     );
+    return this;
+  }
+
+  registerNcpdpScript({ ncpdpScriptForwardUrl }: Config['general']) {
+    console.log('Startup... forwarding NCPDP SCRIPT messages to ' + ncpdpScriptForwardUrl);
+    this.app.post('/script', async (req: any, res: any) => {
+      console.log('Processing NCPDP SCRIPT message');
+      console.log('    forwarding message to ' + ncpdpScriptForwardUrl);
+
+      // forward the message!
+      const options = {
+        method: 'POST',
+        data: req.body,
+        headers: req.headers
+      };
+      const response = await axios(ncpdpScriptForwardUrl, options);
+      return response.data;
+    });
     return this;
   }
 
@@ -245,6 +264,11 @@ class REMSIntermediary extends Server {
       } catch (error) {
         res.status(400).send({ message: 'Error updating connection', error });
       }
+    });
+    this.app.post('/api/reload', async (req: any, res: any) => {
+      console.log('Processing phonebook reload');
+      await loadPhonebook();
+      res.send('Reload completed');
     });
     return this;
   }
