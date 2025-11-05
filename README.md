@@ -121,6 +121,13 @@ Following are a list of modifiable paths:
 | EHR_URL           | `http://localhost:8080/test-ehr/r4`                                            | URL for the EHR System                  |
 | DIRECTORY_SERVICE_URL | http://localhost:3323 | The url for the directory server |
 | SPL_ZIP_FILE_NAME | TESTDATA_rems_document_and_rems_indexing_spl_files.zip | The file name of the spl zip expected to be downloaded |
+| SMART_ENDPOINT | `http://localhost:4040/launch` | Launch URL of associated SMART app. |
+| FRONTEND_VITE_AUTH | `http://localhost:8180` | Frontend-specific authentication server URL for Keycloak. |
+| VITE_SCOPE_ID | `intermediary` | Scope identifier for authentication. |
+| DIRECTORY_API_PATH | `/drug/ndc.json` | API path for querying the directory service. |
+| DIRECTORY_SPL_PATH | `/drugs/spl.zip` | Path for downloading SPL zip files from directory service. |
+| NCPDP_SCRIPT_FORWARD_URL | `http://localhost:5051/ncpdp/script` | URL for forwarding NCPDP Script messages to pharmacy system. |
+
 
 # Data Rights
 
