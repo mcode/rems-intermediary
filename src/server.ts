@@ -169,6 +169,7 @@ class REMSIntermediary extends Server {
           console.log(`Looking up REMS Admin for NDC: ${coding.code}`);
 
           const serviceConnection = await getServiceConnection(coding, undefined);
+          console.log(serviceConnection);
           
           if (serviceConnection && serviceConnection.toNcpdp) {
             const ncpdpEndpoint = serviceConnection.toNcpdp;
@@ -313,6 +314,7 @@ class REMSIntermediary extends Server {
         const resource = new model({
           to: req.body.to,
           toEtasu: req.body.toEtasu,
+          toNcpdp: req.body.toNcpdp,
           from: req.body.from || [EHRWhitelist.any],
           code: req.body.code,
           system: req.body.system

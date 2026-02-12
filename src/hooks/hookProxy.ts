@@ -35,6 +35,7 @@ interface DrugInfo {
 const REMSAdminWhitelist = {
   standardRemsAdmin: config?.general?.remsAdminHookPath,
   standardRemsAdminEtasu: config?.general?.remsAdminFhirEtasuPath,
+  standardRemsAdminNcpdp: config?.general?.remsAdminNcpdpPath,
   discoveryUrlBase: config?.general?.discoveryBaseUrl,
   discoveryApiEndpoint: config?.general?.discoveryApiUrl,
   discoverySplZipEndpoint: config?.general?.discoverySplZipUrl,
@@ -407,7 +408,8 @@ async function saveOrUpdateEntry(entryToSave: any, model: any): Promise<{ action
   
   if (existingEntry) {
     const hasChanges = existingEntry.to !== entryToSave.to || 
-                       existingEntry.toEtasu !== entryToSave.toEtasu;
+                       existingEntry.toEtasu !== entryToSave.toEtasu ||
+                       existingEntry.toNcpdp !== entryToSave.toNcpdp;
     
     if (hasChanges) {
       await model.updateOne(
@@ -415,7 +417,8 @@ async function saveOrUpdateEntry(entryToSave: any, model: any): Promise<{ action
         { 
           $set: { 
             to: entryToSave.to, 
-            toEtasu: entryToSave.toEtasu
+            toEtasu: entryToSave.toEtasu,
+            toNcpdp: entryToSave.toNcpdp
           }
         }
       );
@@ -694,6 +697,7 @@ async function processPhonebookEntries(splDrugs: any[]): Promise<{ drugs: any[],
         console.log(`      🔗  Using fallback endpoints`);
         entryToSave.to = REMSAdminWhitelist.standardRemsAdmin;
         entryToSave.toEtasu = REMSAdminWhitelist.standardRemsAdminEtasu;
+        entryToSave.toNcpdp = REMSAdminWhitelist.standardRemsAdminNcpdp;
         
         // Add default NCPDP endpoint if we have a base URL
         if (REMSAdminWhitelist.standardRemsAdminEtasu) {
@@ -822,6 +826,7 @@ export async function getServiceConnection(coding: Coding, requester: string | u
   const connectionModel = Connection;
   if (coding.system && coding.code) {
     const connection = await connectionModel.findOne({ code: coding.code, system: coding.system });
+    console.log(connection)
     if (!connection) {
       return undefined;
     }

@@ -156,6 +156,24 @@ const EditPopup = (props) => {
                     />
                 </div>
                 <div className='section'>
+                    <DialogContentText id="alert-dialog-description" style={{width: '220px'}}>
+                        REMS NCPDP Endpoint:
+                    </DialogContentText>
+                    <TextField
+                        autoFocus
+                        fullWidth
+                        margin="dense"
+                        id="toNcpdp"
+                        name="toNcpdp"
+                        type="string"
+                        value={updatedConnection?.toNcpdp}
+                        onChange={(event: React.ChangeEvent<HTMLInputElement>) => {
+                            setUpdatedConnection((prevState: any) => ({...prevState, toNcpdp: event.target.value}));
+                        }}
+                        variant="standard"
+                    />
+                </div>
+                <div className='section'>
                     <DialogContentText id="alert-dialog-description" style={{width: '140px'}}>
                         From (optional):
                     </DialogContentText>
