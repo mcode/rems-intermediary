@@ -19,6 +19,8 @@ import path from 'path';
 import { Connection } from './lib/schemas/Phonebook';
 import { EHRWhitelist, loadPhonebook } from './hooks/hookProxy';
 import cookieParser from 'cookie-parser';
+import  { extractDrugFromNcpdp, ndcToCoding, getMessageType} from './lib/ncpdpHelpers';
+import { getServiceConnection } from './hooks/hookProxy';
 
 const logger = container.get('application');
 
@@ -129,21 +131,115 @@ class REMSIntermediary extends Server {
     return this;
   }
 
-  registerNcpdpScript({ ncpdpScriptForwardUrl }: Config['general']) {
-    console.log('Startup... forwarding NCPDP SCRIPT messages to ' + ncpdpScriptForwardUrl);
-    this.app.post('/script', async (req: any, res: any) => {
-      console.log('Processing NCPDP SCRIPT message');
-      console.log('    forwarding message to ' + ncpdpScriptForwardUrl);
+  registerNcpdpScript({ ncpdpScriptForwardUrl, ehrUrl }: Config['general']) {
+    console.log('Registering NCPDP SCRIPT endpoint with intelligent routing');
+    
+    this.app.post('/ncpdp/script', async (req: any, res: any) => {
+      try {
+        console.log('Processing NCPDP SCRIPT message');
 
-      // forward the message!
-      const options = {
-        method: 'POST',
-        data: req.body,
-        headers: req.headers
-      };
-      const response = await axios(ncpdpScriptForwardUrl, options);
-      return response.data;
+        const ehrEndpoint = ehrUrl + '/script'
+              
+        // Determine message type
+        const messageType = getMessageType(req.body);
+        console.log(`Message type: ${messageType}`);
+
+        if (messageType === 'NewRx') {
+          console.log(`Forwarding NewRx to pharmacy: ${ehrEndpoint}`);
+          
+          const options = {
+            method: 'POST',
+            data: req.body,
+            headers: req.headers
+          };
+          
+          const response = await axios(ncpdpScriptForwardUrl, options);
+          return res.send(response.data);
+        }
+
+        if (messageType === 'REMSInitiationRequest' || messageType === 'REMSRequest') {
+          const drugInfo = extractDrugFromNcpdp(req.body);
+          
+          if (!drugInfo || !drugInfo.ndc) {
+            console.error('Could not extract drug code from REMS message');
+            return res.status(400).send('Could not extract drug code from REMS message');
+          }
+
+          const coding = ndcToCoding(drugInfo.ndc);
+          console.log(`Looking up REMS Admin for NDC: ${coding.code}`);
+
+          const serviceConnection = await getServiceConnection(coding, undefined);
+          
+          if (serviceConnection && serviceConnection.toNcpdp) {
+            const ncpdpEndpoint = serviceConnection.toNcpdp;
+            console.log(`Forwarding ${messageType} to REMS Admin: ${ncpdpEndpoint}`);
+            console.log(`  Drug: ${drugInfo.description || 'Unknown'} (${drugInfo.ndc})`);
+            
+            const options = {
+              method: 'POST',
+              data: req.body,
+              headers: req.headers
+            };
+            
+            const response = await axios(ncpdpEndpoint, options);
+            console.log('Received response from REMS Admin');
+            return res.send(response.data);
+          } else {
+            console.error(`No REMS Admin found for drug code: ${drugInfo.ndc}`);
+            return res.status(404).send('No REMS Admin found for this drug');
+          }
+        }
+
+        if (messageType === 'RxFill') {
+          console.log('Processing RxFill message');
+          
+          const drugInfo = extractDrugFromNcpdp(req.body);
+          const promises = [];
+          
+          // Send to EHR
+ 
+          console.log(`Sending RxFill to EHR: ${ehrEndpoint}`);
+          promises.push(
+            axios.post(ehrEndpoint, req.body, { headers: req.headers })
+              .then(() => console.log('✓ RxFill sent to EHR'))
+              .catch(err => console.error('✗ Error sending RxFill to EHR:', err.message))
+          );
+      
+          
+          // Send to REMS Admin if REMS drug
+          if (drugInfo && drugInfo.ndc) {
+            const coding = ndcToCoding(drugInfo.ndc);
+            const serviceConnection = await getServiceConnection(coding, undefined);
+            
+            if (serviceConnection && serviceConnection.toNcpdp) {
+              console.log(`Sending RxFill to REMS Admin: ${serviceConnection.toNcpdp}`);
+              console.log(`  Drug: ${drugInfo.description || 'Unknown'} (${drugInfo.ndc})`);
+              
+              promises.push(
+                axios.post(serviceConnection.toNcpdp, req.body, { headers: req.headers })
+                  .then(() => console.log('✓ RxFill sent to REMS Admin'))
+                  .catch(err => console.error('✗ Error sending RxFill to REMS Admin:', err.message))
+              );
+            }
+          }
+          
+          // Wait for all sends to complete
+          await Promise.all(promises);
+          
+          // Return success status
+          return res.send({ status: 'success', message: 'RxFill processed' });
+        }
+
+        // Unknown message type
+        console.error(`Unknown NCPDP message type: ${messageType}`);
+        return res.status(400).send(`Unknown NCPDP message type: ${messageType}`);
+        
+      } catch (error: any) {
+        console.error('Error processing NCPDP message:', error.message);
+        return res.status(500).send('Error processing NCPDP message: ' + error.message);
+      }
     });
+    
     return this;
   }
 

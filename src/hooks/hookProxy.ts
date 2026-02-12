@@ -624,6 +624,11 @@ function createDrugEntry(drug: DrugInfo, cdsEndpoint?: string, fhirBaseUrl?: str
     ? finalFhirBaseUrl + '4_0_0/GuidanceResponse/$rems-etasu'
     : finalFhirBaseUrl + '/4_0_0/GuidanceResponse/$rems-etasu';
 
+  // Add NCPDP endpoint
+  const ncpdpUrl = finalFhirBaseUrl.endsWith('/')
+    ? finalFhirBaseUrl + 'ncpdp/script'
+    : finalFhirBaseUrl + '/ncpdp/script';
+
   return {
     code: code,
     system: system,
@@ -631,6 +636,7 @@ function createDrugEntry(drug: DrugInfo, cdsEndpoint?: string, fhirBaseUrl?: str
     generic_name: drug.genericName,
     to: cdsUrl,
     toEtasu: etasuUrl,
+    toNcpdp: ncpdpUrl,
     from: [EHRWhitelist.any]
   };
 }
@@ -678,12 +684,25 @@ async function processPhonebookEntries(splDrugs: any[]): Promise<{ drugs: any[],
           ? apiResult.rems_fhir_base_url + '4_0_0/GuidanceResponse/$rems-etasu'
           : apiResult.rems_fhir_base_url + '/4_0_0/GuidanceResponse/$rems-etasu';
         
+        entryToSave.toNcpdp = apiResult.rems_fhir_base_url.endsWith('/')
+          ? apiResult.rems_fhir_base_url + 'ncpdp/script'
+          : apiResult.rems_fhir_base_url + '/ncpdp/script';
+        
         phonebookApiCount++;
       } else {
         console.log(`    ⚙️  PHONEBOOK DEFAULT USED: ${entry.brand_name} (${entry.code})`);
         console.log(`      🔗  Using fallback endpoints`);
         entryToSave.to = REMSAdminWhitelist.standardRemsAdmin;
         entryToSave.toEtasu = REMSAdminWhitelist.standardRemsAdminEtasu;
+        
+        // Add default NCPDP endpoint if we have a base URL
+        if (REMSAdminWhitelist.standardRemsAdminEtasu) {
+          const baseUrl = REMSAdminWhitelist.standardRemsAdminEtasu.split('/4_0_0')[0];
+          entryToSave.toNcpdp = baseUrl.endsWith('/') 
+            ? baseUrl + 'ncpdp/script'
+            : baseUrl + '/ncpdp/script';
+        }
+        
         phonebookDefaultCount++;
       }
       

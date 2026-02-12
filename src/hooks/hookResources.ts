@@ -95,7 +95,7 @@ export async function handleHook(
 
   if (contextRequest && contextRequest.resourceType === 'MedicationRequest') {
 
-    const forwardData = (hook: Hook, url: string) => {
+    const forwardData = async (hook: Hook, url: string) => {
       // remove the auth token before any forwarding occurs
       delete hook.fhirAuthorization;
       const options = {
@@ -103,14 +103,14 @@ export async function handleHook(
         data: hook,
         timeout: 5000,
       };
-      const response = axios(url, options);
-      response.then(e => {
-        res.json(e.data);
-      })
-      .catch(err => {
+      
+      try {
+        const response = await axios(url, options);
+        res.json(response.data);
+      } catch (err) {
         console.log(err);
         res.json({ cards: [] }); // Return fallback response
-      });
+      }
     };
 
     let drugCodes = getDrugCodesFromMedicationRequest(contextRequest);
@@ -128,14 +128,14 @@ export async function handleHook(
             const url = serviceConnection.to + hook.hook;
             console.log('rems-admin hook url: ' + url);
             if (hook.fhirAuthorization && hook.fhirServer && hook.fhirAuthorization.access_token) {
-              hydrate(getFhirResource, hookPrefetch, hook).then(hydratedPrefetch => {
+              hydrate(getFhirResource, hookPrefetch, hook).then(async hydratedPrefetch => {
                 if (hydratedPrefetch) {
                   hook.prefetch = hydratedPrefetch;
                 }
-                forwardData(hook, url);
+                await forwardData(hook, url);
               });
             } else {
-              forwardData(hook, url);
+              await forwardData(hook, url);
             }
 
             found = true;
@@ -226,23 +226,31 @@ export async function handleHook(
               res.json({ cards: [] });
               return;
             }
-            uniqueUrls.forEach((url: string) => {
+            uniqueUrls.forEach(async (url: string) => {
               // remove the auth token before any forwarding occurs
               delete hook.fhirAuthorization;
+              
               const options = {
                 method: 'POST',
                 data: hook
               };
-              const response = axios(url, options);
-              response.then(e => {
-                cards = [...cards, ...e.data.cards];
+              
+              try {
+                const response = await axios(url, options);
+                cards = [...cards, ...response.data.cards];
 
                 urlCount--;
                 if (urlCount <= 0) {
                   // return the final list of cards
                   res.json({ cards });
                 }
-              });
+              } catch (error) {
+                console.error('Error calling REMS Admin:', error);
+                urlCount--;
+                if (urlCount <= 0) {
+                  res.json({ cards });
+                }
+              }
             });
           }
         });
