@@ -56,6 +56,7 @@
                     <td class="highlight"><input type="text" value="${connection.code}" data-id="${connection._id}" data-field="code"></td>
                     <td><input type="text" value="${connection.to}" data-id="${connection._id}" data-field="to"></td>
                     <td><input type="text" value="${connection.toEtasu}" data-id="${connection._id}" data-field="toEtasu"></td>
+                    <td><input type="text" value="${connection.toNcpdp}" data-id="${connection._id}" data-field="toNcpdp"></td>
                     <td><input type="text" value="${connection.from.join(', ')}" data-id="${connection._id}" data-field="from"></td>
                     <td><input type="text" value="${connection.system}" data-id="${connection._id}" data-field="system"></td>
                     <td>
@@ -71,7 +72,7 @@
             const codeInput = document.querySelector(`input[data-id="${id}"][data-field="code"]`);
             const toInput = document.querySelector(`input[data-id="${id}"][data-field="to"]`);
             const toEtasuInput = document.querySelector(`input[data-id="${id}"][data-field="toEtasu"]`);
-
+            const toNcpdpInput = document.querySelector(`input[data-id="${id}"][data-field="toNcpdp"]`);
             const fromInput = document.querySelector(`input[data-id="${id}"][data-field="from"]`);
             const systemInput = document.querySelector(`input[data-id="${id}"][data-field="system"]`);
 
@@ -79,6 +80,7 @@
                 code: codeInput.value,
                 to: toInput.value,
                 toEtasu: toEtasuInput.value,
+                toNcpdp: toNcpdpInput.value,
                 from: fromInput.value.split(',').map(item => item.trim()),
                 system: systemInput.value
             };

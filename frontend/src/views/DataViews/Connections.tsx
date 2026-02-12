@@ -26,6 +26,7 @@ export type Connection = {
     code?: string;
     to?: string;
     toEtasu?: string;
+    toNcpdp?: string;
     system?: string;
     from?: Array<String>;
     _id: string;
@@ -35,7 +36,7 @@ const Connections = () => {
     const [allData, setAllData] = useState<Connection[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [openEdit, setOpenEdit] = useState(false);
-    const [connection, setConnection] = useState<Connection | null>({code: '', to: '', toEtasu: '', from: [''], system: '', _id: ''});
+    const [connection, setConnection] = useState<Connection | null>({code: '', to: '', toEtasu: '', toNcpdp: '', from: [''], system: '', _id: ''});
     const [addNew, setAddNew] = useState(false);
     const [title, setTitle] = useState('Edit Connection');
 
@@ -99,7 +100,7 @@ const Connections = () => {
     }
 
     const registerClient = () => {
-        setConnection({code: '', to: '', toEtasu: '', from: [''], system: '', _id: ''});
+        setConnection({code: '', to: '', toEtasu: '', toNcpdp: '', from: [''], system: '', _id: ''});
         setAddNew(true);
         setTitle('Register Client');
         setOpenEdit(true);
@@ -179,6 +180,7 @@ const Connections = () => {
                                             <TableCell align="left">Code</TableCell>
                                             <TableCell align="left">To</TableCell>
                                             <TableCell align="left">Etasu</TableCell>
+                                            <TableCell align="left">NCPDP</TableCell>
                                             <TableCell align="left">From</TableCell>
                                             <TableCell align="left">System</TableCell>
                                             <TableCell align="left">Actions</TableCell>
@@ -191,6 +193,7 @@ const Connections = () => {
                                             <TableCell align="left" className='btn-group'>{row.code}</TableCell>
                                             <TableCell align="left" className='btn-group'>{row.to}</TableCell>
                                             <TableCell align="left" className='btn-group'>{row.toEtasu}</TableCell>
+                                            <TableCell align="left" className='btn-group'>{row.toNcpdp}</TableCell>
                                             <TableCell align="left" className='btn-group'>{row.from}</TableCell>
                                             <TableCell align="left" className='btn-group'>{row.system}</TableCell>
                                             <TableCell align="left" className='btn-group'>

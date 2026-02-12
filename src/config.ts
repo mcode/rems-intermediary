@@ -23,6 +23,7 @@ export type Config = {
   general: {
     remsAdminHookPath: string | undefined;
     remsAdminFhirEtasuPath: string;
+    remsAdminNcpdpPath: string;
     ehrUrl: string | undefined;
     discoveryBaseUrl: string | undefined;
     discoveryApiUrl: string | undefined;
@@ -90,9 +91,9 @@ const config: Config = {
     remsAdminHookPath: env.get('REMS_ADMIN_HOOK_PATH').asString(),
     splZipFileName: env.get('SPL_ZIP_FILE_NAME').asString() || 'TESTDATA_rems_document_and_rems_indexing_spl_files.zip',
     ncpdpScriptForwardUrl: env.get('NCPDP_SCRIPT_FORWARD_URL').asString() || 'http://localhost:5051/ncpdp/script',
-    remsAdminFhirEtasuPath:
-      env.get('REMS_ADMIN_FHIR_PATH').asString() + '/GuidanceResponse/$rems-etasu',
-      ehrUrl: env.get('EHR_URL').asString(),
+    remsAdminFhirEtasuPath: env.get('REMS_ADMIN_FHIR_PATH').asString() + '/GuidanceResponse/$rems-etasu',
+    remsAdminNcpdpPath: env.get('REMS_ADMIN_NCPDP_PATH').asString() + '/ncpdp/scripts',
+    ehrUrl: env.get('EHR_URL').asString(),
   },
   database: {
     selected: 'mongo',
