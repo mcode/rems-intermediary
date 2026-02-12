@@ -7,7 +7,11 @@ const ConnectionSchema = new Schema({
     required: true
   },
   toEtasu: {
-    type: String,
+    type: String, 
+    required: true
+  },
+  toNcpdp: {
+    type: String, 
     required: true
   },
   from: [
