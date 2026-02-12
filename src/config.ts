@@ -92,7 +92,7 @@ const config: Config = {
     splZipFileName: env.get('SPL_ZIP_FILE_NAME').asString() || 'TESTDATA_rems_document_and_rems_indexing_spl_files.zip',
     ncpdpScriptForwardUrl: env.get('NCPDP_SCRIPT_FORWARD_URL').asString() || 'http://localhost:5051/ncpdp/script',
     remsAdminFhirEtasuPath: env.get('REMS_ADMIN_FHIR_PATH').asString() + '/GuidanceResponse/$rems-etasu',
-    remsAdminNcpdpPath: env.get('REMS_ADMIN_FHIR_PATH').asString() + '/ncpdp/scripts',
+    remsAdminNcpdpPath: env.get('REMS_ADMIN_NCPDP_PATH').asString() + '/ncpdp/scripts',
     ehrUrl: env.get('EHR_URL').asString(),
   },
   database: {
