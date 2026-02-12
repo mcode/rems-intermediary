@@ -145,7 +145,7 @@ class REMSIntermediary extends Server {
         console.log(`Message type: ${messageType}`);
 
         if (messageType === 'NewRx') {
-          console.log(`Forwarding NewRx to pharmacy: ${ehrEndpoint}`);
+          console.log(`Forwarding NewRx to pharmacy: ${ncpdpScriptForwardUrl}`);
           
           const options = {
             method: 'POST',
