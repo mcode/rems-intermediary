@@ -21,6 +21,8 @@ import { EHRWhitelist, loadPhonebook } from './hooks/hookProxy';
 import cookieParser from 'cookie-parser';
 import  { extractDrugFromNcpdp, ndcToCoding, getMessageType} from './lib/ncpdpHelpers';
 import { getServiceConnection } from './hooks/hookProxy';
+import { HookSession } from './lib/schemas/HookSession';
+import { Communication } from 'fhir/r4';
 
 const logger = container.get('application');
 
@@ -36,6 +38,7 @@ const initialize = (config: Config): REMSIntermediary => {
     .registerEndpoint()
     .registerCdsHooks(config.server)
     .registerNcpdpScript(config.general)
+    .registerFhirCommunicationEndpoint()
     .setupLogin()
     .setErrorRoutes();
 };
@@ -131,6 +134,177 @@ class REMSIntermediary extends Server {
     return this;
   }
 
+
+  registerFhirCommunicationEndpoint(): REMSIntermediary {
+    console.log('Registering FHIR Communication endpoint');
+    
+    // FHIR R4 standard endpoint for creating Communication resources
+    this.app.post('/Communication', async (req: any, res: any) => {
+      console.log('\n Received Communication resource from REMS Admin');
+      
+      try {
+        const communication: Communication = req.body;
+
+        // Validate that this is a Communication resource
+        if (!communication || communication.resourceType !== 'Communication') {
+          console.error(' Invalid resource: not a Communication');
+          return res.status(400).json({
+            resourceType: 'OperationOutcome',
+            issue: [{
+              severity: 'error',
+              code: 'invalid',
+              diagnostics: 'Request body must be a Communication resource'
+            }]
+          });
+        }
+
+        console.log(`   Status: ${communication.status}`);
+        console.log(`   Subject: ${communication.subject?.reference}`);
+
+        // Extract patient ID from Communication.subject
+        if (!communication.subject?.reference) {
+          console.error(' Communication missing subject reference');
+          return res.status(400).json({
+            resourceType: 'OperationOutcome',
+            issue: [{
+              severity: 'error',
+              code: 'required',
+              diagnostics: 'Communication.subject is required to identify target EHR'
+            }]
+          });
+        }
+
+        // Parse patient ID from reference
+        const patientRef = communication.subject.reference;
+        const patientId = patientRef.includes('/') ? 
+          patientRef.split('/').pop() : 
+          patientRef;
+
+        if (!patientId) {
+          console.error(' Could not extract patient ID from subject reference');
+          return res.status(400).json({
+            resourceType: 'OperationOutcome',
+            issue: [{
+              severity: 'error',
+              code: 'invalid',
+              diagnostics: `Invalid subject reference format: ${patientRef}`
+            }]
+          });
+        }
+
+        console.log(`   Patient ID: ${patientId}`);
+
+        // Look up active session for this patient
+        const session = await HookSession.findActiveSession(patientId);
+
+        if (!session) {
+          console.error(` No active session found for patient ${patientId}`);
+          return res.status(404).json({
+            resourceType: 'OperationOutcome',
+            issue: [{
+              severity: 'error',
+              code: 'not-found',
+              diagnostics: `No active CDS Hook session found for patient ${patientId}`
+            }]
+          });
+        }
+
+        console.log(` Found active session for patient ${patientId}`);
+        console.log(`   EHR FHIR Server: ${session.ehrFhirServer}`);
+        console.log(`   Hook Type: ${session.hookType}`);
+        console.log(`   Hook Instance: ${session.hookInstance}`);
+
+        // Build EHR Communication endpoint URL
+        const ehrUrl = session.ehrFhirServer.endsWith('/') ?
+          `${session.ehrFhirServer}Communication` :
+          `${session.ehrFhirServer}/Communication`;
+
+        console.log(` Forwarding Communication to EHR: ${ehrUrl}`);
+
+        // Prepare request to EHR
+        const options: any = {
+          method: 'POST',
+          url: ehrUrl,
+          data: communication,
+          headers: {
+            'Content-Type': 'application/fhir+json'
+          }
+        };
+
+        // Add authorization if available from the stored session
+        if (session.ehrAuthorization && session.ehrAuthorization.access_token) {
+          options.headers['Authorization'] = `Bearer ${session.ehrAuthorization.access_token}`;
+          console.log('    Using stored OAuth token');
+        } else {
+          console.log('    No authorization token available - forwarding without auth');
+        }
+
+        try {
+          // Forward Communication to EHR
+          const ehrResponse = await axios(options);
+          
+          console.log(` Successfully forwarded Communication to EHR (status: ${ehrResponse.status})`);
+          
+          // Update session statistics
+          await session.incrementCommunications();
+          
+          // Return EHR's response to REMS Admin
+          // Per FHIR spec, successful create returns 201 Created with the created resource
+          res.status(ehrResponse.status).json(ehrResponse.data);
+          
+        } catch (ehrError: any) {
+          console.error(` Error forwarding Communication to EHR:`, ehrError.message);
+          
+          if (ehrError.response) {
+            // EHR returned an error
+            console.error(`   EHR responded with status ${ehrError.response.status}`);
+            console.error(`   EHR response: ${JSON.stringify(ehrError.response.data)}`);
+            
+            // Forward EHR's error response to REMS Admin
+            return res.status(ehrError.response.status).json(ehrError.response.data);
+          } else if (ehrError.code === 'ETIMEDOUT' || ehrError.code === 'ECONNREFUSED') {
+            // Network error
+            console.error('   Network error: EHR unreachable');
+            return res.status(502).json({
+              resourceType: 'OperationOutcome',
+              issue: [{
+                severity: 'error',
+                code: 'timeout',
+                diagnostics: 'Unable to reach EHR FHIR server'
+              }]
+            });
+          } else {
+            // Other error
+            console.error(`   Unexpected error: ${ehrError.message}`);
+            return res.status(500).json({
+              resourceType: 'OperationOutcome',
+              issue: [{
+                severity: 'error',
+                code: 'exception',
+                diagnostics: 'Internal error while forwarding Communication to EHR'
+              }]
+            });
+          }
+        }
+
+      } catch (error: any) {
+        console.error(' Error processing Communication request:', error.message);
+        console.error(error.stack);
+        
+        return res.status(500).json({
+          resourceType: 'OperationOutcome',
+          issue: [{
+            severity: 'error',
+            code: 'exception',
+            diagnostics: 'Internal server error processing Communication resource'
+          }]
+        });
+      }
+    });
+
+    return this;
+  }
+
   registerNcpdpScript({ ncpdpScriptForwardUrl, ehrUrl }: Config['general']) {
     console.log('Registering NCPDP SCRIPT endpoint with intelligent routing');
     
@@ -169,7 +343,6 @@ class REMSIntermediary extends Server {
           console.log(`Looking up REMS Admin for NDC: ${coding.code}`);
 
           const serviceConnection = await getServiceConnection(coding, undefined);
-          console.log(serviceConnection);
           
           if (serviceConnection && serviceConnection.toNcpdp) {
             const ncpdpEndpoint = serviceConnection.toNcpdp;
@@ -314,7 +487,6 @@ class REMSIntermediary extends Server {
         const resource = new model({
           to: req.body.to,
           toEtasu: req.body.toEtasu,
-          toNcpdp: req.body.toNcpdp,
           from: req.body.from || [EHRWhitelist.any],
           code: req.body.code,
           system: req.body.system
@@ -368,6 +540,27 @@ class REMSIntermediary extends Server {
       await loadPhonebook();
       res.send('Reload completed');
     });
+    
+    // Get all hook sessions
+    this.app.get('/api/sessions', async (req: any, res: any) => {
+      try {
+        const sessions = await HookSession.find();
+        res.json({ count: sessions.length, sessions });
+      } catch (error: any) {
+        res.status(500).json({ error: error.message });
+      }
+    });
+    
+    // Clear all hook sessions
+    this.app.post('/api/sessions/clear', async (req: any, res: any) => {
+      try {
+        const result = await HookSession.deleteMany({});
+        res.json({ message: `Cleared ${result.deletedCount} session(s)`, deletedCount: result.deletedCount });
+      } catch (error: any) {
+        res.status(500).json({ error: error.message });
+      }
+    });
+    
     return this;
   }
   /**
