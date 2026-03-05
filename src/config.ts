@@ -25,6 +25,7 @@ export type Config = {
     remsAdminFhirEtasuPath: string;
     remsAdminNcpdpPath: string;
     ehrUrl: string | undefined;
+    ehrBaseUrl: string | undefined;
     discoveryBaseUrl: string | undefined;
     discoveryApiUrl: string | undefined;
     discoverySplZipUrl: string | undefined;
@@ -94,6 +95,7 @@ const config: Config = {
     remsAdminFhirEtasuPath: env.get('REMS_ADMIN_FHIR_PATH').asString() + '/GuidanceResponse/$rems-etasu',
     remsAdminNcpdpPath: env.get('REMS_ADMIN_NCPDP_PATH').asString() + '/ncpdp/scripts',
     ehrUrl: env.get('EHR_URL').asString(),
+    ehrBaseUrl: env.get('EHR_BASE_URL').asString(),
   },
   database: {
     selected: 'mongo',

@@ -19,7 +19,7 @@ import path from 'path';
 import { Connection } from './lib/schemas/Phonebook';
 import { EHRWhitelist, loadPhonebook } from './hooks/hookProxy';
 import cookieParser from 'cookie-parser';
-import  { extractDrugFromNcpdp, ndcToCoding, getMessageType} from './lib/ncpdpHelpers';
+import  { extractDrugFromNcpdp, ndcToCoding, getMessageType, Qualifier, getToQualifier } from './lib/ncpdpHelpers';
 import { getServiceConnection } from './hooks/hookProxy';
 
 const logger = container.get('application');
@@ -131,14 +131,14 @@ class REMSIntermediary extends Server {
     return this;
   }
 
-  registerNcpdpScript({ ncpdpScriptForwardUrl, ehrUrl }: Config['general']) {
+  registerNcpdpScript({ ncpdpScriptForwardUrl, ehrBaseUrl }: Config['general']) {
     console.log('Registering NCPDP SCRIPT endpoint with intelligent routing');
     
     this.app.post('/ncpdp/script', async (req: any, res: any) => {
       try {
         console.log('Processing NCPDP SCRIPT message');
 
-        const ehrEndpoint = ehrUrl + '/script'
+        const ehrEndpoint = ehrBaseUrl + '/ncpdp/script'
               
         // Determine message type
         const messageType = getMessageType(req.body);
@@ -195,37 +195,34 @@ class REMSIntermediary extends Server {
           console.log('Processing RxFill message');
           
           const drugInfo = extractDrugFromNcpdp(req.body);
-          const promises = [];
           
-          // Send to EHR
- 
-          console.log(`Sending RxFill to EHR: ${ehrEndpoint}`);
-          promises.push(
-            axios.post(ehrEndpoint, req.body, { headers: req.headers })
-              .then(() => console.log('✓ RxFill sent to EHR'))
-              .catch(err => console.error('✗ Error sending RxFill to EHR:', err.message))
-          );
-      
+          // grab the qualifier from the to
+          const qualifier = getToQualifier(req.body);
           
-          // Send to REMS Admin if REMS drug
-          if (drugInfo && drugInfo.ndc) {
-            const coding = ndcToCoding(drugInfo.ndc);
-            const serviceConnection = await getServiceConnection(coding, undefined);
-            
-            if (serviceConnection && serviceConnection.toNcpdp) {
-              console.log(`Sending RxFill to REMS Admin: ${serviceConnection.toNcpdp}`);
-              console.log(`  Drug: ${drugInfo.description || 'Unknown'} (${drugInfo.ndc})`);
+          if (qualifier == Qualifier.Clinic || qualifier == Qualifier.Prescriber) {
+            // Send to EHR
+            console.log(`Sending RxFill to EHR: ${ehrEndpoint}`);
+
+            await axios.post(ehrEndpoint, req.body, { headers: req.headers })
+                .then(() => console.log('✓ RxFill sent to EHR'))
+                .catch(err => console.error('✗ Error sending RxFill to EHR:', err.message));
+
+          } else if (qualifier == Qualifier.REMSAdministrator) {
+            // Send to REMS Admin if REMS drug
+            if (drugInfo && drugInfo.ndc) {
+              const coding = ndcToCoding(drugInfo.ndc);
+              const serviceConnection = await getServiceConnection(coding, undefined);
               
-              promises.push(
-                axios.post(serviceConnection.toNcpdp, req.body, { headers: req.headers })
-                  .then(() => console.log('✓ RxFill sent to REMS Admin'))
-                  .catch(err => console.error('✗ Error sending RxFill to REMS Admin:', err.message))
-              );
+              if (serviceConnection && serviceConnection.toNcpdp) {
+                console.log(`Sending RxFill to REMS Admin: ${serviceConnection.toNcpdp}`);
+                console.log(`  Drug: ${drugInfo.description || 'Unknown'} (${drugInfo.ndc})`);
+                
+                await axios.post(serviceConnection.toNcpdp, req.body, { headers: req.headers })
+                    .then(() => console.log('✓ RxFill sent to REMS Admin'))
+                    .catch(err => console.error('✗ Error sending RxFill to REMS Admin:', err.message));
+              }
             }
           }
-          
-          // Wait for all sends to complete
-          await Promise.all(promises);
           
           // Return success status
           return res.send({ status: 'success', message: 'RxFill processed' });

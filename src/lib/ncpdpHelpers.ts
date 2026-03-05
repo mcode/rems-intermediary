@@ -14,6 +14,67 @@ interface NcpdpDrugInfo {
   description?: string;
 }
 
+export enum Qualifier {
+  Pharmacy = "P",                       // Pharmacy
+  Clinic = "C",                         // Clinic
+  Mailbox = "M",                        // Mailbox
+  Prescriber = "P",                     // Prescriber
+  CentralFillFacility = "CF",           // Central Fill Facility
+  MutuallyDefined = "ZZZ",              // Mutually Defined
+  Payer = "PY",                         // Payer
+  DirectIDSecureEmailAddress = "DIRECT",// Direct ID secure email address
+  REMSAdministrator="REMS",             // REMS Administrator
+  Unknown="?"                           // Unknown / Error
+}
+
+/**
+ * 
+ * Determine the to:qualifier from the NCPDP message xml
+ */
+export function getToQualifier(xmlData: string | any): Qualifier {
+  try {
+    let parsedXml;
+
+    if (typeof xmlData === 'object') {
+      parsedXml = xmlData;
+    } else {
+      const parser = new XMLParser(XML_PARSER_OPTIONS);
+      parsedXml = parser.parse(xmlData);
+    }
+
+    const message = parsedXml?.Message || parsedXml?.message;
+    if (!message) {
+      console.log('Error: NCPDP XML missing Message')
+      return Qualifier.Unknown;
+    }
+
+    const header = message?.Header || message?.header;
+    if (!header) {
+      console.log('Error: NCPDP XML missing Header')
+      return Qualifier.Unknown;
+    }
+
+    const to = header?.To || header?.to;
+    if (!to) {
+      console.log('Error: NCPDP XML missing To')
+      return Qualifier.Unknown;
+    }
+
+    const qualifier = to['@_Qualifier'];
+
+    if (!qualifier) {
+      console.log('Error: NCPDP XML missing Qualifier')
+      return Qualifier.Unknown;
+    }
+
+    return qualifier;
+
+  } catch (error) {
+    console.error('Error determining NCPDP To Qualifier:', error);
+    return Qualifier.Unknown;
+  }
+}
+
 /**
  * Determine NCPDP message type from parsed XML
  */
