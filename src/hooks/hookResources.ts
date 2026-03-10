@@ -11,6 +11,8 @@ import axios from 'axios';
 import { ServicePrefetch } from '../rems-cds-hooks/resources/CdsService';
 import { hydrate } from '../rems-cds-hooks/prefetch/PrefetchHydrator';
 import { getServiceConnection } from './hookProxy';
+import { HookSession } from '../lib/schemas/HookSession';
+import * as env from 'env-var';
 
 export interface CardRule {
   links: Link[];
@@ -96,19 +98,48 @@ export async function handleHook(
   if (contextRequest && contextRequest.resourceType === 'MedicationRequest') {
 
     const forwardData = async (hook: Hook, url: string) => {
-      // remove the auth token before any forwarding occurs
-      delete hook.fhirAuthorization;
-      const options = {
-        method: 'POST',
-        data: hook,
-        timeout: 5000,
-      };
+      // Store original EHR details before modifying the hook
+      const originalFhirServer = hook.fhirServer?.toString();
       
       try {
+        // Create and save HookSession to MongoDB
+        const session = await HookSession.createFromHook(hook);
+        
+        console.log(`\n Created HookSession in MongoDB:`);
+        console.log(`   Session ID: ${session._id}`);
+        console.log(`   Patient: ${session.patientId}`);
+        console.log(`   Hook Instance: ${session.hookInstance}`);
+        console.log(`   EHR FHIR Server: ${session.ehrFhirServer}`);
+        console.log(`   Authorization stored: ${session.ehrAuthorization?.access_token ? 'Yes' : 'No'}`);
+
+        // Get intermediary's FHIR base URL from environment
+        const intermediaryFhirUrl = env.get('INTERMEDIARY_FHIR_URL').asString() || 
+                                    config.server.backendApiBase || 
+                                    `http://localhost:${config.server.port}`;
+        
+        // Override the fhirServer URL to point to intermediary
+        hook.fhirServer = new URL(intermediaryFhirUrl);
+        
+        // Remove authorization before forwarding to REMS Admin
+        delete hook.fhirAuthorization;
+        
+        console.log(`\n Forwarding CDS Hook to REMS Admin:`);
+        console.log(`   Original EHR: ${originalFhirServer}`);
+        console.log(`   Overridden to: ${hook.fhirServer}`);
+        console.log(`   REMS Admin will POST Communications to: ${hook.fhirServer}Communication\n`);
+        
+        const options = {
+          method: 'POST',
+          data: hook,
+          timeout: 5000,
+        };
+        
         const response = await axios(url, options);
         res.json(response.data);
-      } catch (err) {
-        console.log(err);
+        
+      } catch (err: any) {
+        console.error(' Error in forwardData:', err.message);
+        console.error(err.stack);
         res.json({ cards: [] }); // Return fallback response
       }
     };
@@ -126,7 +157,7 @@ export async function handleHook(
           let serviceConnection = await getServiceConnection(drugCode, hook.fhirServer?.toString());
           if (serviceConnection) {
             const url = serviceConnection.to + hook.hook;
-            console.log('rems-admin hook url: ' + url);
+            console.log('REMS Admin hook URL: ' + url);
             if (hook.fhirAuthorization && hook.fhirServer && hook.fhirAuthorization.access_token) {
               hydrate(getFhirResource, hookPrefetch, hook).then(async hydratedPrefetch => {
                 if (hydratedPrefetch) {
@@ -227,15 +258,36 @@ export async function handleHook(
               return;
             }
             uniqueUrls.forEach(async (url: string) => {
-              // remove the auth token before any forwarding occurs
-              delete hook.fhirAuthorization;
-              
-              const options = {
-                method: 'POST',
-                data: hook
-              };
+              // Store original before modification
+              const originalFhirServer = hook.fhirServer?.toString();
               
               try {
+                // Create and save HookSession to MongoDB
+                const session = await HookSession.createFromHook(hook);
+                
+                console.log(`\n Created HookSession in MongoDB (${hookType}):`);
+                console.log(`   Session ID: ${session._id}`);
+                console.log(`   Patient: ${session.patientId}`);
+
+                // Get intermediary's FHIR base URL
+                const intermediaryFhirUrl = env.get('INTERMEDIARY_FHIR_URL').asString() || 
+                                            config.server.backendApiBase || 
+                                            `http://localhost:${config.server.port}`;
+                
+                // Override fhirServer to point to intermediary
+                hook.fhirServer = new URL(intermediaryFhirUrl);
+                
+                // Remove authorization
+                delete hook.fhirAuthorization;
+                
+                console.log(`   Original EHR: ${originalFhirServer}`);
+                console.log(`   Overridden to: ${hook.fhirServer}\n`);
+                
+                const options = {
+                  method: 'POST',
+                  data: hook
+                };
+                
                 const response = await axios(url, options);
                 cards = [...cards, ...response.data.cards];
 
@@ -244,8 +296,8 @@ export async function handleHook(
                   // return the final list of cards
                   res.json({ cards });
                 }
-              } catch (error) {
-                console.error('Error calling REMS Admin:', error);
+              } catch (error: any) {
+                console.error(' Error in processMedications:', error.message);
                 urlCount--;
                 if (urlCount <= 0) {
                   res.json({ cards });
