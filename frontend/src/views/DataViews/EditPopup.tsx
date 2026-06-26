@@ -60,7 +60,7 @@ const EditPopup = (props) => {
 
     const fieldsFilled = () => {
         return (updatedConnection?.code && updatedConnection?.system 
-            && updatedConnection?.to && updatedConnection?.toEtasu);
+            && updatedConnection?.to && updatedConnection?.toEtasu && updatedConnection?.toNcpdp);
     }
 
     return (

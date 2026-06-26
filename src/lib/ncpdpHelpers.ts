@@ -76,6 +76,35 @@ export function getToQualifier(xmlData: string | any): Qualifier {
 }
 
 /**
+ * Determine the NCPDP Header.To identifier from the message XML.
+ */
+export function getHeaderTo(xmlData: string | any): string | undefined {
+  try {
+    let parsedXml;
+
+    if (typeof xmlData === 'object') {
+      parsedXml = xmlData;
+    } else {
+      const parser = new XMLParser(XML_PARSER_OPTIONS);
+      parsedXml = parser.parse(xmlData);
+    }
+
+    const message = parsedXml?.Message || parsedXml?.message;
+    const header = message?.Header || message?.header;
+    const to = header?.To || header?.to;
+
+    if (typeof to === 'string') {
+      return to;
+    }
+
+    return to?.['#text'] || to?._ || undefined;
+  } catch (error) {
+    console.error('Error determining NCPDP Header.To:', error);
+    return undefined;
+  }
+}
+
+/**
  * Determine NCPDP message type from parsed XML
  */
 export function getMessageType(xmlData: string | any): string {

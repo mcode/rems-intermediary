@@ -19,7 +19,7 @@ import path from 'path';
 import { Connection } from './lib/schemas/Phonebook';
 import { EHRWhitelist, loadPhonebook } from './hooks/hookProxy';
 import cookieParser from 'cookie-parser';
-import  { extractDrugFromNcpdp, ndcToCoding, getMessageType, Qualifier, getToQualifier } from './lib/ncpdpHelpers';
+import  { extractDrugFromNcpdp, ndcToCoding, getMessageType, Qualifier, getToQualifier, getHeaderTo } from './lib/ncpdpHelpers';
 import { getServiceConnection } from './hooks/hookProxy';
 import { HookSession } from './lib/schemas/HookSession';
 import { Communication } from 'fhir/r4';
@@ -306,12 +306,137 @@ class REMSIntermediary extends Server {
   }
 
 
-  registerNcpdpScript({ ncpdpScriptForwardUrl, ehrBaseUrl }: Config['general']) {
+  registerNcpdpScript({ ncpdpScriptForwardUrl, ehrBaseUrl, ppaPharmacyEndpoints }: Config['general']) {
     console.log('Registering NCPDP SCRIPT endpoint with intelligent routing');
+
+    const getPharmacyRoute = (pharmacyId: string | undefined, fallbackUrl: string) => {
+      if (!pharmacyId) return fallbackUrl;
+
+      try {
+        const endpoints = JSON.parse(ppaPharmacyEndpoints || '[]');
+        const endpoint = endpoints.find((entry: any) => entry.id === pharmacyId);
+        return endpoint?.scriptUrl || endpoint?.ncpdpScriptUrl || endpoint?.url || fallbackUrl;
+      } catch (error: any) {
+        console.error('Could not parse pharmacy routing config:', error.message);
+        return fallbackUrl;
+      }
+    };
+
+    const getPpaMessage = (body: any) => body?.Message || body?.MessageType;
+
+    const getPpaTo = (body: any): string | undefined => {
+      const to = getPpaMessage(body)?.Header?.To;
+      if (typeof to === 'string') return to;
+      return to?.['#text'] || to?._;
+    };
+
+    const isPpaRequest = (body: any) => Boolean(getPpaMessage(body)?.Body?.PPARequest);
+    const isPpaMessage = (body: any) =>
+      getPpaMessage(body)?.['@TransactionDomain'] === 'PPA' || isPpaRequest(body);
+
+    const validatePpaRequest = (body: any) => {
+      const message = getPpaMessage(body);
+      const errors: string[] = [];
+
+      if (!message) {
+        return ['Missing Message'];
+      }
+
+      if (message['@TransactionDomain'] !== 'PPA') {
+        errors.push('Message TransactionDomain must be PPA');
+      }
+      if (message['@TransactionVersion'] !== '2.0') {
+        errors.push('Message TransactionVersion must be 2.0');
+      }
+      if (!message.Body?.PPARequest) {
+        errors.push('Missing Body.PPARequest');
+      }
+
+      const header = message.Header;
+      if (!header) {
+        errors.push('Missing Header');
+      } else {
+        ['To', 'From', 'MessageID', 'SentTime'].forEach(key => {
+          if (!header[key]) errors.push(`Missing Header.${key}`);
+        });
+        [
+          'SenderSoftwareDeveloper',
+          'SenderSoftwareProduct',
+          'SenderSoftwareVersionRelease',
+          'SenderSoftwareOperator'
+        ].forEach(key => {
+          if (!header.SenderSoftware?.[key]) errors.push(`Missing Header.SenderSoftware.${key}`);
+        });
+      }
+
+      return errors;
+    };
+
+    const buildPpaError = (body: any, code: string, description: string) => {
+      const header = getPpaMessage(body)?.Header || {};
+      return {
+        Message: {
+          '@TransactionDomain': 'PPA',
+          '@TransactionVersion': '2.0',
+          Header: {
+            To: header.From || 'Unknown',
+            From: 'Intermediary',
+            MessageID: `PPAError-${Date.now()}`,
+            RelatesToMessageID: header.MessageID,
+            SentTime: new Date().toISOString(),
+            SenderSoftware: {
+              SenderSoftwareDeveloper: 'REMS Prototype',
+              SenderSoftwareProduct: 'REMS Intermediary',
+              SenderSoftwareVersionRelease: '1',
+              SenderSoftwareOperator: 'Intermediary'
+            }
+          },
+          Body: {
+            Error: {
+              TransactionErrorCode: code,
+              Description: description
+            }
+          }
+        }
+      };
+    };
+
+    const forwardPpaRequest = async (req: any, res: any, routeName: string) => {
+      const message = getPpaMessage(req.body);
+      const to = getPpaTo(req.body);
+
+      const validationErrors = validatePpaRequest(req.body);
+      if (validationErrors.length > 0) {
+        return res.status(400).json(buildPpaError(req.body, '602', validationErrors.join('; ')));
+      }
+
+      const endpoints = JSON.parse(ppaPharmacyEndpoints || '[]');
+      const endpoint = endpoints.find((entry: any) => entry.id === to);
+      const ppaUrl = endpoint?.scriptUrl || endpoint?.ncpdpScriptUrl || endpoint?.url;
+
+      if (!ppaUrl) {
+        return res
+          .status(404)
+          .json(buildPpaError(req.body, '601', `No pharmacy PPA route configured for ${to}`));
+      }
+
+      console.log(`Forwarding PPARequest from ${routeName} to pharmacy ${to}: ${ppaUrl}`);
+      const response = await axios.post(ppaUrl, req.body, {
+        headers: {
+          Accept: 'application/json',
+          'Content-Type': 'application/json'
+        }
+      });
+      return res.status(response.status).json(response.data);
+    };
     
     this.app.post('/ncpdp/script', async (req: any, res: any) => {
       try {
         console.log('Processing NCPDP SCRIPT message');
+
+        if (isPpaMessage(req.body)) {
+          return forwardPpaRequest(req, res, '/ncpdp/script');
+        }
 
         const ehrEndpoint = ehrBaseUrl + '/ncpdp/script'
               
@@ -320,7 +445,9 @@ class REMSIntermediary extends Server {
         console.log(`Message type: ${messageType}`);
 
         if (messageType === 'NewRx') {
-          console.log(`Forwarding NewRx to pharmacy: ${ncpdpScriptForwardUrl}`);
+          const pharmacyId = getHeaderTo(req.body);
+          const pharmacyEndpoint = getPharmacyRoute(pharmacyId, ncpdpScriptForwardUrl);
+          console.log(`Forwarding NewRx to pharmacy ${pharmacyId || 'default'}: ${pharmacyEndpoint}`);
           
           const options = {
             method: 'POST',
@@ -328,7 +455,7 @@ class REMSIntermediary extends Server {
             headers: req.headers
           };
           
-          const response = await axios(ncpdpScriptForwardUrl, options);
+          const response = await axios(pharmacyEndpoint, options);
           return res.send(response.data);
         }
 
@@ -408,10 +535,13 @@ class REMSIntermediary extends Server {
         
       } catch (error: any) {
         console.error('Error processing NCPDP message:', error.message);
+        if (isPpaMessage(req.body)) {
+          return res.status(500).json(buildPpaError(req.body, '601', error.message));
+        }
         return res.status(500).send('Error processing NCPDP message: ' + error.message);
       }
     });
-    
+
     return this;
   }
 
@@ -485,9 +615,12 @@ class REMSIntermediary extends Server {
         const resource = new model({
           to: req.body.to,
           toEtasu: req.body.toEtasu,
+          toNcpdp: req.body.toNcpdp,
           from: req.body.from || [EHRWhitelist.any],
           code: req.body.code,
-          system: req.body.system
+          system: req.body.system,
+          brand_name: req.body.brand_name || req.body.brandName || req.body.code,
+          generic_name: req.body.generic_name || req.body.genericName
         });
         resource
           .save()

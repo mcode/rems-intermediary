@@ -116,6 +116,7 @@ Following are a list of modifiable paths:
 | VITE_CLIENT     | `app-login`                                        | Client used for connecting to keycloak authentication server.                                         |
 | REMS_ADMIN_HOOK_PATH | `http://localhost:8090/cds-services/rems-`    | REMS Administrator default base path for CDS Hooks.   |
 | REMS_ADMIN_FHIR_PATH   |  `http://localhost:8090/4_0_0`   | REMS Administrator default base path for the FHIR Server   |
+| REMS_ADMIN_NCPDP_PATH | `http://localhost:8090` | REMS Administrator default base URL used to build the `/ncpdp/script` endpoint when directory lookup is unavailable. |
 | FRONTEND_PORT            | `9080`                                             | Port that the frontend  server should run on, change if there are conflicts with port usage.                   |
 | BACKEND_API_BASE            | `http://localhost:3003`                                             | Base URL for the backend server of the intermediary                   |
 | EHR_URL           | `http://localhost:8080/test-ehr/r4`                                            | URL for the EHR System                  |
@@ -127,6 +128,7 @@ Following are a list of modifiable paths:
 | DIRECTORY_API_PATH | `/drug/ndc.json` | API path for querying the directory service. |
 | DIRECTORY_SPL_PATH | `/drugs/spl.zip` | Path for downloading SPL zip files from directory service. |
 | NCPDP_SCRIPT_FORWARD_URL | `http://localhost:5051/ncpdp/script` | URL for forwarding NCPDP Script messages to pharmacy system. |
+| PPA_PHARMACY_ENDPOINTS | `[{...Pharmacy123...},{...Pharmacy456...}]` | JSON array of pharmacy routes keyed by the PPA `Header.To` value. Each entry should include `id` and a `/ncpdp/script` `url` or `scriptUrl`; `scriptUrl` is used for both PPA JSON forwarding and selected-pharmacy NewRx forwarding when present. |
 
 
 # Data Rights
