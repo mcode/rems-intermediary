@@ -93,6 +93,13 @@ const phonebook = [
     from: [EHRWhitelist.any]
   },
   {
+    code: '99999-407-20', // Generic pexidartinib
+    system: 'http://hl7.org/fhir/sid/ndc',
+    brand_name: "Pexidartinib Hydrochloride",
+    generic_name: "PEXIDARTINIB HYDROCHLORIDE",
+    from: [EHRWhitelist.any]
+  },
+  {
     code: '58604-214-30', // Addyi
     system: 'http://hl7.org/fhir/sid/ndc',
     brand_name: "ADDYI",

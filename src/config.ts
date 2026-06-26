@@ -8,6 +8,13 @@ const whitelistEnv = env.get('WHITELIST').asArray() || false;
 // If no whitelist is present, disable CORS
 const whitelist = whitelistEnv && whitelistEnv.length === 1 ? whitelistEnv[0] : whitelistEnv;
 
+const trimTrailingSlash = (value: string | undefined) => value?.replace(/\/+$/, '');
+const remsAdminFhirPath = env.get('REMS_ADMIN_FHIR_PATH').asString();
+const remsAdminNcpdpBase =
+  trimTrailingSlash(env.get('REMS_ADMIN_NCPDP_PATH').asString()) ||
+  trimTrailingSlash(remsAdminFhirPath?.replace(/\/4_0_0\/?$/, '')) ||
+  'http://localhost:8090';
+
 export type Config = {
   server: {
     port: number | undefined;
@@ -31,6 +38,7 @@ export type Config = {
     discoverySplZipUrl: string | undefined;
     splZipFileName: string;
     ncpdpScriptForwardUrl: string;
+    ppaPharmacyEndpoints: string;
   };
   database: {
     selected: string;
@@ -92,8 +100,9 @@ const config: Config = {
     remsAdminHookPath: env.get('REMS_ADMIN_HOOK_PATH').asString(),
     splZipFileName: env.get('SPL_ZIP_FILE_NAME').asString() || 'TESTDATA_rems_document_and_rems_indexing_spl_files.zip',
     ncpdpScriptForwardUrl: env.get('NCPDP_SCRIPT_FORWARD_URL').asString() || 'http://localhost:5051/ncpdp/script',
-    remsAdminFhirEtasuPath: env.get('REMS_ADMIN_FHIR_PATH').asString() + '/GuidanceResponse/$rems-etasu',
-    remsAdminNcpdpPath: env.get('REMS_ADMIN_NCPDP_PATH').asString() + '/ncpdp/scripts',
+    ppaPharmacyEndpoints: env.get('PPA_PHARMACY_ENDPOINTS').asString() || '[{"id":"Pharmacy123","url":"http://localhost:5051/ncpdp/script"}]',
+    remsAdminFhirEtasuPath: remsAdminFhirPath + '/GuidanceResponse/$rems-etasu',
+    remsAdminNcpdpPath: remsAdminNcpdpBase + '/ncpdp/script',
     ehrUrl: env.get('EHR_URL').asString(),
     ehrBaseUrl: env.get('EHR_BASE_URL').asString(),
   },

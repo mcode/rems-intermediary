@@ -5,21 +5,18 @@ import axios from 'axios';
 const getMedicationCode = (
   medication: Medication | MedicationRequest | undefined
 ): Coding | undefined => {
-  // grab the medication drug code from the Medication resource
-  let drugCode;
+  const selectRoutingCode = (codings: Coding[] | undefined) => {
+    const ndc = codings?.find(medCode => medCode?.system?.toLowerCase().endsWith('/ndc'));
+    if (ndc) return ndc;
+
+    return codings?.find(medCode => medCode?.system?.toLowerCase().includes('rxnorm'));
+  };
+
   if (medication?.resourceType == 'Medication') {
-    medication?.code?.coding?.forEach((medCode: Coding) => {
-      if (medCode?.system?.endsWith('rxnorm')) {
-        drugCode = medCode;
-      }
-    });
+    return selectRoutingCode(medication?.code?.coding);
   } else {
     if (medication?.medicationCodeableConcept) {
-      medication?.medicationCodeableConcept?.coding?.forEach((medCode: Coding) => {
-        if (medCode.system?.endsWith('rxnorm')) {
-          drugCode = medCode;
-        }
-      });
+      return selectRoutingCode(medication?.medicationCodeableConcept?.coding);
     } else if (medication?.medicationReference) {
       const ref = medication.medicationReference.reference;
       if (ref?.startsWith('#')) {
@@ -33,7 +30,6 @@ const getMedicationCode = (
       }
     }
   }
-  return drugCode;
 };
 
 module.exports.remsEtasu = async (args: any, context: any, logger: any) => {

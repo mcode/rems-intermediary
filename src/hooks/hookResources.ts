@@ -34,10 +34,19 @@ export function buildErrorCard(reason: string) {
 }
 
 export function getDrugCodesFromMedicationRequest(medicationRequest: MedicationRequest) {
+  const prioritizeNdc = (codings: any[] | undefined | null) => {
+    if (!codings) return codings;
+    return [...codings].sort((first, second) => {
+      const firstIsNdc = first?.system?.toLowerCase().endsWith('/ndc') ? 1 : 0;
+      const secondIsNdc = second?.system?.toLowerCase().endsWith('/ndc') ? 1 : 0;
+      return secondIsNdc - firstIsNdc;
+    });
+  };
+
   if (medicationRequest) {
     if (medicationRequest?.medicationCodeableConcept) {
       console.log('Get Medication codes from CodeableConcept');
-      return medicationRequest?.medicationCodeableConcept?.coding;
+      return prioritizeNdc(medicationRequest?.medicationCodeableConcept?.coding);
     } else if (medicationRequest?.medicationReference) {
       const reference = medicationRequest?.medicationReference;
       let codes = null;
@@ -50,7 +59,7 @@ export function getDrugCodesFromMedicationRequest(medicationRequest: MedicationR
         }
       });
       console.log('Found codes: ' + JSON.stringify(codes));
-      return codes;
+      return prioritizeNdc(codes);
     }
   }
   return null;
