@@ -1,3 +1,4 @@
+import env from '#env';
 import axios from 'axios';
 import { useEffect, useState, SetStateAction } from 'react';
 import {
@@ -45,7 +46,7 @@ const Connections = () => {
       }, []);
     
     const getExistingConnections = async () => {
-        const url = process.env.BACKEND_API_BASE + '/api/connections';
+        const url = env.BACKEND_API_BASE + '/api/connections';
         await axios
         .get(url)
         .then(function (response: { data: SetStateAction<Connection[]> }) {
@@ -59,7 +60,7 @@ const Connections = () => {
     };
 
     const deleteConnection = async (event: any, row: Connection) => {
-        const url = process.env.BACKEND_API_BASE + `/api/connections/${row._id}`;
+        const url = env.BACKEND_API_BASE + `/api/connections/${row._id}`;
         await axios
         .delete(url)
         .then(async function (response: any) {
@@ -86,7 +87,7 @@ const Connections = () => {
     }
 
     const reloadSpl = async () => {
-        const url = process.env.BACKEND_API_BASE + '/api/reload';
+        const url = env.BACKEND_API_BASE + '/api/reload';
         await axios
         .post(url)
         .then(async function (response: any) {

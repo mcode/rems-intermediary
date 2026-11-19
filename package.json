@@ -27,25 +27,25 @@
     "@projecttacoma/node-fhir-server-core": "^2.2.8",
     "@types/fhir": "^0.0.35",
     "@types/glob": "^8.1.0",
-    "adm-zip": "^0.5.16",
-    "axios": "^1.9.0",
+    "adm-zip": "^0.6.1",
+    "axios": "^1.21.1",
     "body-parser": "^1.19.0",
-    "conventional-changelog-cli": "^2.0.34",
+    "conventional-changelog-cli": "^5.0.0",
     "cookie-parser": "^1.4.6",
     "cors": "^2.8.5",
     "dotenv": "^16.3.1",
     "env-var": "^7.5.0",
-    "fhirclient": "^2.5.2",
-    "fhirpath": "^3.2.0",
+    "fast-xml-parser": "^5.12.1",
+    "fhirclient": "^3.0.2",
     "glob": "^10.2.1",
     "lodash": "^4.17.19",
     "moment": "^2.24.0",
     "moment-timezone": "^0.5.40",
     "mongodb": "^4.12.1",
-    "mongoose": "7.3.3",
+    "mongoose": "7.8.14",
     "morgan": "^1.9.1",
     "uid": "^2.0.1",
-    "uuid": "^9.0.0",
+    "uuid": "^11.1.1",
     "winston": "^3.2.1",
     "winston-daily-rotate-file": "^4.2.1",
     "xml2js": "^0.6.2"
@@ -65,7 +65,6 @@
     "@types/node": "^18.11.9",
     "@types/nodemon": "^1.19.2",
     "@types/sinon": "10.0.13",
-    "@types/uuid": "^9.0.0",
     "@types/xml2js": "^0.4.14",
     "@typescript-eslint/eslint-plugin": "^5.45.0",
     "@typescript-eslint/parser": "^5.45.0",
@@ -77,8 +76,8 @@
     "eslint-plugin-mongo": "^1.0.5",
     "eslint-plugin-prettier": "^4.2.1",
     "json-diff": "^0.9.0",
-    "mocha": "^10.2.0",
-    "mongodb-memory-server": "^8.12.1",
+    "mocha": "^12.0.3",
+    "mongodb-memory-server": "^10.4.1",
     "nock": "^13.2.9",
     "nodemon": "^2.0.20",
     "prettier": "^2.0.5",
@@ -87,5 +86,16 @@
     "ts-node": "^10.9.1",
     "ts-node-dev": "^2.0.0",
     "typescript": "^4.9.3"
+  },
+  "overrides": {
+    "@projecttacoma/node-fhir-server-core": {
+      "eslint": "^8.57.1",
+      "jsonwebtoken": "^9.0.3",
+      "passport": "^0.6.0",
+      "validator": "^13.15.35"
+    },
+    "simple-update-notifier@1.1.0": {
+      "semver": "^7.5.2"
+    }
   }
 }

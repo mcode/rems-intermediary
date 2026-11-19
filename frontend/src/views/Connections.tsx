@@ -1,3 +1,4 @@
+import env from '#env';
 import axios from 'axios';
 import { useEffect, useState, SetStateAction } from 'react';
 import {
@@ -25,7 +26,7 @@ const Connections = () => {
       }, []);
     
     const getExistingConnections = async () => {
-    const url = process.env.BACKEND_API_BASE + '/api/connections';
+    const url = env.BACKEND_API_BASE + '/api/connections';
     await axios
         .get(url)
         .then(function (response: { data }) {

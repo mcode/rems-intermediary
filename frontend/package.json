@@ -3,6 +3,9 @@
   "private": true,
   "version": "0.0.0",
   "type": "module",
+  "imports": {
+    "#env": "./src/env.ts"
+  },
   "scripts": {
     "start": "vite",
     "build": "tsc -b && vite build",
@@ -14,7 +17,7 @@
     "@emotion/styled": "^11.13.0",
     "@mui/icons-material": "^6.1.1",
     "@mui/material": "^6.1.1",
-    "axios": "^1.7.7",
+    "axios": "^1.21.1",
     "dotenv": "^16.4.5",
     "react": "^18.3.1",
     "react-dom": "^18.3.1"
@@ -31,6 +34,6 @@
     "globals": "^15.9.0",
     "typescript": "^5.5.3",
     "typescript-eslint": "^8.0.1",
-    "vite": "^5.4.19"
+    "vite": "^7.3.8"
   }
 }

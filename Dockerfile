@@ -1,8 +1,10 @@
-FROM node:18-alpine 
+FROM node:24-alpine
 WORKDIR /rems-intermediary
 COPY --chown=node:node . .
 
-RUN npm install
+RUN apk upgrade --no-cache zlib \
+    && npm install --global npm@11.21.2 \
+    && npm install
 WORKDIR /rems-intermediary/frontend
 RUN npm install 
 
