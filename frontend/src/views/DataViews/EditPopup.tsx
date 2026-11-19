@@ -1,3 +1,4 @@
+import env from '#env';
 import Dialog from '@mui/material/Dialog';
 import DialogActions from '@mui/material/DialogActions';
 import DialogContent from '@mui/material/DialogContent';
@@ -23,7 +24,7 @@ const EditPopup = (props) => {
     }, [data])
 
     const saveConnection = async () => {
-        const url = process.env.BACKEND_API_BASE + `/api/connections/${updatedConnection._id}`;
+        const url = env.BACKEND_API_BASE + `/api/connections/${updatedConnection._id}`;
         await axios
         .put(url, updatedConnection)
         .then(async function (response: any) {
@@ -39,7 +40,7 @@ const EditPopup = (props) => {
 
     const createConnection = async () => {
         console.log('want to create connection -- > ', updatedConnection);
-        const url = process.env.BACKEND_API_BASE + '/api/connections';
+        const url = env.BACKEND_API_BASE + '/api/connections';
         await axios
         .post(url, updatedConnection)
         .then(function (response: { status: any }) {

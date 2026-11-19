@@ -1,3 +1,4 @@
+import env from '#env';
 import { SetStateAction, useState } from 'react';
 import axios from 'axios';
 import { Avatar, Box, Button, Container, CssBaseline, TextField, Typography } from '@mui/material';
@@ -19,9 +20,9 @@ const Login = props => {
       params.append('username', user);
       params.append('password', pass);
       params.append('grant_type', 'password');
-      params.append('client_id', process.env.VITE_CLIENT!);
+      params.append('client_id', env.VITE_CLIENT!);
       axios
-        .post(`${process.env.FRONTEND_VITE_AUTH}/realms/${process.env.VITE_REALM}/protocol/openid-connect/token`, params, {
+        .post(`${env.FRONTEND_VITE_AUTH}/realms/${env.VITE_REALM}/protocol/openid-connect/token`, params, {
           withCredentials: true
         })
         .then(
